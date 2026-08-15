@@ -19,12 +19,19 @@ function phoneToAuthEmail(phone) {
 }
 
 // Login accepts either a phone number or an email in the same field.
-// If it looks like an email, use it as-is; otherwise treat it as a
-// phone number and go through the same synthetic-email conversion
-// used at sign up.
-function identifierToAuthEmail(identifier) {
+// We can't just guess which synthetic/real email an account was
+// created with — someone who signed up with both a phone and an
+// email only has ONE real identity in Supabase Auth (whichever was
+// used at sign up). So instead of guessing, we look up the actual
+// auth email that was stored for this phone/email at sign up time,
+// via a database function that's allowed to run before login.
+async function resolveAuthEmail(identifier) {
   const trimmed = identifier.trim()
-  return trimmed.includes('@') ? trimmed : phoneToAuthEmail(trimmed)
+  const { data, error } = await supabase.rpc('auth_email_for_identifier', {
+    lookup: trimmed,
+  })
+  if (error) throw error
+  return data || null
 }
 
 export function AuthProvider({ children }) {
@@ -62,8 +69,10 @@ export function AuthProvider({ children }) {
   // real Supabase auth identity (so they can log in with it, and it
   // unlocks things like password-reset emails later). If they leave
   // it blank, we fall back to the phone-as-email trick, same as before.
+  // Either way, we save the exact auth email we used in `auth_email`,
+  // so login can always find it again later — see resolveAuthEmail.
   async function signUp({ fullName, shippingName, phone, email, password }) {
-    const trimmedEmail = email?.trim()
+    const trimmedEmail = email?.trim().toLowerCase()
     const authEmail = trimmedEmail ? trimmedEmail : phoneToAuthEmail(phone)
     const { data, error } = await supabase.auth.signUp({ email: authEmail, password })
     if (error) throw error
@@ -77,6 +86,7 @@ export function AuthProvider({ children }) {
       shipping_name: shippingName,
       phone,
       email: trimmedEmail || null,
+      auth_email: authEmail,
       role: 'customer',
       phone_verified: false, // flips to true once OTP verification is wired up
     })
@@ -90,8 +100,11 @@ export function AuthProvider({ children }) {
   }
 
   async function signIn({ identifier, password }) {
-    const email = identifierToAuthEmail(identifier)
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    const authEmail = await resolveAuthEmail(identifier)
+    if (!authEmail) {
+      throw new Error('NO_ACCOUNT')
+    }
+    const { error } = await supabase.auth.signInWithPassword({ email: authEmail, password })
     if (error) throw error
   }
 
@@ -103,7 +116,7 @@ export function AuthProvider({ children }) {
   // Requires the admin's session; RLS on profiles allows this because
   // is_admin() checks the caller's own role.
   async function adminCreateCustomer({ fullName, shippingName, phone, email, password }) {
-    const trimmedEmail = email?.trim()
+    const trimmedEmail = email?.trim().toLowerCase()
     const authEmail = trimmedEmail ? trimmedEmail : phoneToAuthEmail(phone)
     const { data, error } = await supabase.auth.signUp({ email: authEmail, password })
     if (error) throw error
@@ -116,6 +129,7 @@ export function AuthProvider({ children }) {
       shipping_name: shippingName,
       phone,
       email: trimmedEmail || null,
+      auth_email: authEmail,
       role: 'customer',
       phone_verified: true, // staff-created accounts skip OTP; they've verified the customer directly
     })

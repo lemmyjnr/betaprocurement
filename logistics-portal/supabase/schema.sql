@@ -8,13 +8,17 @@
 -- number — in that case the app writes a synthetic email like
 -- "2348012345678@phone.betaprocurement-portal.com" into auth.users.
 -- Either way, the phone number (always required) and the real email
--- (if given) both live here, in profiles.
+-- (if given) both live here, in profiles. `auth_email` is always the
+-- exact value that was used as the Supabase Auth identity — it's how
+-- login looks up the right account whether someone types their phone
+-- or their email (see auth_email_for_identifier below).
 create table if not exists profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   full_name text not null,
   shipping_name text not null,
   phone text unique not null,
   email text unique,
+  auth_email text unique,
   role text not null default 'customer' check (role in ('customer', 'admin')),
   phone_verified boolean not null default false,
   created_at timestamptz not null default now()
@@ -99,6 +103,21 @@ returns boolean as $$
     select 1 from profiles where id = auth.uid() and role = 'admin'
   );
 $$ language sql security definer;
+
+-- Lets the login page find the right Supabase Auth email for
+-- whatever a customer typed — their phone number OR their email —
+-- without needing to be logged in first (RLS on profiles would
+-- otherwise block this). Deliberately returns nothing but the one
+-- email string; no other profile data is exposed by this function.
+create or replace function auth_email_for_identifier(lookup text)
+returns text as $$
+  select auth_email from profiles
+  where email = lower(trim(lookup))
+     or phone = regexp_replace(lookup, '\D', '', 'g')
+  limit 1
+$$ language sql security definer set search_path = public;
+
+grant execute on function auth_email_for_identifier(text) to anon, authenticated;
 
 -- Profiles
 create policy "view own profile or admin views all"

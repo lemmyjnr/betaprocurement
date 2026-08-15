@@ -23,7 +23,11 @@ export default function Login() {
       await signIn(form)
       navigate('/')
     } catch (err) {
-      setError('That phone number/email and password don\u2019t match our records.')
+      if (err.message === 'NO_ACCOUNT') {
+        setError('We couldn\u2019t find an account with that phone number or email.')
+      } else {
+        setError('That password doesn\u2019t match our records.')
+      }
     } finally {
       setLoading(false)
     }
