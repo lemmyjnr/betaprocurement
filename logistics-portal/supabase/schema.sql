@@ -4,14 +4,17 @@
 -- ============================================================
 
 -- Supabase auth.users needs an email to sign up with a password.
--- Customers only give us a phone number, so on sign up the app
--- writes a synthetic email like "2348012345678@logistics.local"
--- into auth.users, and the REAL phone number lives here, in profiles.
+-- A customer can give us a real email at sign up, or just a phone
+-- number — in that case the app writes a synthetic email like
+-- "2348012345678@phone.betaprocurement-portal.com" into auth.users.
+-- Either way, the phone number (always required) and the real email
+-- (if given) both live here, in profiles.
 create table if not exists profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   full_name text not null,
   shipping_name text not null,
   phone text unique not null,
+  email text unique,
   role text not null default 'customer' check (role in ('customer', 'admin')),
   phone_verified boolean not null default false,
   created_at timestamptz not null default now()

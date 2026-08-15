@@ -7,7 +7,7 @@ import { useAuth } from '../context/AuthContext'
 export default function SignUp() {
   const { signUp } = useAuth()
   const navigate = useNavigate()
-  const [form, setForm] = useState({ fullName: '', shippingName: '', phone: '', password: '' })
+  const [form, setForm] = useState({ fullName: '', shippingName: '', phone: '', email: '', password: '' })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -64,6 +64,15 @@ export default function SignUp() {
             value={form.phone}
             onChange={update('phone')}
             placeholder="0808 337 1869"
+          />
+        </FormField>
+
+        <FormField label="Email (optional)" error="Add this to also log in with email, or to reset your password later.">
+          <TextInput
+            type="email"
+            value={form.email}
+            onChange={update('email')}
+            placeholder="you@example.com"
           />
         </FormField>
 

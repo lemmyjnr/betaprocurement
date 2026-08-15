@@ -10,7 +10,7 @@ export default function AdminCustomers() {
   const [customers, setCustomers] = useState([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
-  const [form, setForm] = useState({ fullName: '', shippingName: '', phone: '', password: '' })
+  const [form, setForm] = useState({ fullName: '', shippingName: '', phone: '', email: '', password: '' })
   const [error, setError] = useState('')
   const [creating, setCreating] = useState(false)
 
@@ -38,7 +38,7 @@ export default function AdminCustomers() {
     setCreating(true)
     try {
       await adminCreateCustomer(form)
-      setForm({ fullName: '', shippingName: '', phone: '', password: '' })
+      setForm({ fullName: '', shippingName: '', phone: '', email: '', password: '' })
       setShowForm(false)
       loadCustomers()
     } catch (err) {
@@ -71,6 +71,9 @@ export default function AdminCustomers() {
           </FormField>
           <FormField label="Phone number">
             <TextInput required type="tel" value={form.phone} onChange={update('phone')} />
+          </FormField>
+          <FormField label="Email (optional)">
+            <TextInput type="email" value={form.email} onChange={update('email')} />
           </FormField>
           <FormField label="Temporary password">
             <TextInput required type="text" minLength={6} value={form.password} onChange={update('password')} />

@@ -7,7 +7,7 @@ import { useAuth } from '../context/AuthContext'
 export default function Login() {
   const { signIn } = useAuth()
   const navigate = useNavigate()
-  const [form, setForm] = useState({ phone: '', password: '' })
+  const [form, setForm] = useState({ identifier: '', password: '' })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -23,22 +23,21 @@ export default function Login() {
       await signIn(form)
       navigate('/')
     } catch (err) {
-      setError('That phone number and password don\u2019t match our records.')
+      setError('That phone number/email and password don\u2019t match our records.')
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <AuthLayout eyebrow="Welcome back" title="Log in" subtitle="Use the phone number you signed up with.">
+    <AuthLayout eyebrow="Welcome back" title="Log in" subtitle="Use the phone number or email you signed up with.">
       <form onSubmit={handleSubmit}>
-        <FormField label="Phone number">
+        <FormField label="Phone number or email">
           <TextInput
             required
-            type="tel"
-            value={form.phone}
-            onChange={update('phone')}
-            placeholder="0808 337 1869"
+            value={form.identifier}
+            onChange={update('identifier')}
+            placeholder="0808 337 1869 or you@example.com"
           />
         </FormField>
 

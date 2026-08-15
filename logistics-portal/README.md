@@ -1,13 +1,18 @@
 # Logistics Portal
 
 Customer-facing tracking portal, built with React, Tailwind, and Supabase.
-Customers sign up with a phone number, upload tracking numbers in batches,
-and view packing lists. Admin/staff manage all of that from a separate
-side of the same app.
+Customers sign up with a phone number (email optional), upload tracking
+numbers in batches, and view packing lists. Admin/staff manage all of
+that from a separate side of the same app.
 
 ## What's built
 
-- Sign up (name, shipping name, phone, password) and login (phone, password)
+- Sign up (name, shipping name, phone — required; email — optional) and
+  login with either phone number or email, same password either way.
+  Phone number is still the account's primary identity everywhere else
+  in the app (shipping labels, admin lists, etc.) — email is just an
+  extra way in, and unlocks things like password-reset emails for
+  customers who add one.
 - Batch upload: add one or several waybills at once, tagged with service
   type (Air Cargo / Sea Shipping) and route (China → Nigeria, Dubai →
   Nigeria). Every submission gets its own batch code, so nothing mixes
@@ -39,12 +44,18 @@ up: `AuthContext.jsx` (where the code would be sent) and
 1. Create a project at supabase.com.
 2. In the SQL Editor, run everything in `supabase/schema.sql`. This
    creates the tables and the Row Level Security policies that keep
-   customers from seeing each other's data.
-3. In Project Settings → API, copy your Project URL and anon public
-   key.
-4. In Authentication → Settings, turn OFF "Confirm email" — this app
-   uses phone numbers, not real email addresses, so there's no inbox
-   to confirm from. Leaving it on will block sign-ups.
+   customers from seeing each other's data. (If you already had this
+   project running before email support was added, just run
+   `supabase/migrations/001_add_email_to_profiles.sql` instead —
+   it adds the one missing column without touching anything else.)
+3. In Project Settings → API Keys, copy your Project URL (Settings →
+   General) and your Publishable key.
+4. In Authentication → Settings, turn OFF "Confirm email". Customers
+   who sign up with just a phone number get a synthetic email under
+   the hood, so there's no inbox to confirm from — leaving this on
+   will block those sign-ups. Customers who do add a real email won't
+   get a confirmation step either, for consistency with how phone
+   sign-up already works in this build (see the OTP note below).
 
 ## Running locally
 
