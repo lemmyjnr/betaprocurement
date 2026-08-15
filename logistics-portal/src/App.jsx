@@ -4,7 +4,7 @@ import { RequireAuth, RequireAdmin } from './components/ProtectedRoute'
 
 import Login from './pages/Login'
 import SignUp from './pages/SignUp'
-import VerifyPhone from './pages/VerifyPhone'
+import StaffInvite from './pages/StaffInvite'
 import Dashboard from './pages/Dashboard'
 import BatchList from './pages/BatchList'
 import NewBatch from './pages/NewBatch'
@@ -17,6 +17,7 @@ import AdminCustomers from './pages/admin/AdminCustomers'
 import AdminCustomerDetail from './pages/admin/AdminCustomerDetail'
 import AdminBatches from './pages/admin/AdminBatches'
 import AdminBatchDetail from './pages/admin/AdminBatchDetail'
+import AdminStaff from './pages/admin/AdminStaff'
 
 export default function App() {
   return (
@@ -25,7 +26,7 @@ export default function App() {
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<SignUp />} />
-          <Route path="/verify-phone" element={<VerifyPhone />} />
+          <Route path="/staff-invite/:inviteId" element={<StaffInvite />} />
 
           <Route path="/" element={<RequireAuth><Dashboard /></RequireAuth>} />
           <Route path="/batches" element={<RequireAuth><BatchList /></RequireAuth>} />
@@ -40,6 +41,7 @@ export default function App() {
           <Route path="/admin/batches" element={<RequireAdmin><AdminBatches /></RequireAdmin>} />
           <Route path="/admin/batches/:id" element={<RequireAdmin><AdminBatchDetail /></RequireAdmin>} />
           <Route path="/admin/packing-lists" element={<RequireAdmin><AdminBatches /></RequireAdmin>} />
+          <Route path="/admin/staff" element={<RequireAdmin><AdminStaff /></RequireAdmin>} />
         </Routes>
       </AuthProvider>
     </BrowserRouter>

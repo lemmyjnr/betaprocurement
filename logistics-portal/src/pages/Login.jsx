@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import AuthLayout from '../components/AuthLayout'
 import FormField, { TextInput, PrimaryButton } from '../components/FormField'
 import { useAuth } from '../context/AuthContext'
+import { isAdminHost } from '../lib/portalHost'
 
 export default function Login() {
   const { signIn } = useAuth()
@@ -10,6 +11,7 @@ export default function Login() {
   const [form, setForm] = useState({ identifier: '', password: '' })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const adminHost = isAdminHost()
 
   function update(field) {
     return (e) => setForm((f) => ({ ...f, [field]: e.target.value }))
@@ -21,7 +23,9 @@ export default function Login() {
     setLoading(true)
     try {
       await signIn(form)
-      navigate('/')
+      // If this isn't actually a staff member, RequireAdmin sends them
+      // straight back to the customer dashboard — see ProtectedRoute.jsx.
+      navigate(adminHost ? '/admin' : '/')
     } catch (err) {
       if (err.message === 'NO_ACCOUNT') {
         setError('We couldn\u2019t find an account with that phone number or email.')
@@ -34,7 +38,15 @@ export default function Login() {
   }
 
   return (
-    <AuthLayout eyebrow="Welcome back" title="Log in" subtitle="Use the phone number or email you signed up with.">
+    <AuthLayout
+      eyebrow={adminHost ? 'Staff login' : 'Welcome back'}
+      title="Log in"
+      subtitle={
+        adminHost
+          ? 'This login is for Beta Procurement staff.'
+          : 'Use the phone number or email you signed up with.'
+      }
+    >
       <form onSubmit={handleSubmit}>
         <FormField label="Phone number or email">
           <TextInput
@@ -62,12 +74,14 @@ export default function Login() {
         </PrimaryButton>
       </form>
 
-      <p className="text-sm text-steel mt-6 text-center">
-        New here?{' '}
-        <Link to="/signup" className="text-ink font-medium hover:text-amber">
-          Create an account
-        </Link>
-      </p>
+      {!adminHost && (
+        <p className="text-sm text-steel mt-6 text-center">
+          New here?{' '}
+          <Link to="/signup" className="text-ink font-medium hover:text-amber">
+            Create an account
+          </Link>
+        </p>
+      )}
     </AuthLayout>
   )
 }

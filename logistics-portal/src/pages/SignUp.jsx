@@ -1,8 +1,9 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, Navigate, useNavigate } from 'react-router-dom'
 import AuthLayout from '../components/AuthLayout'
 import FormField, { TextInput, PrimaryButton } from '../components/FormField'
 import { useAuth } from '../context/AuthContext'
+import { isAdminHost } from '../lib/portalHost'
 
 export default function SignUp() {
   const { signUp } = useAuth()
@@ -10,6 +11,12 @@ export default function SignUp() {
   const [form, setForm] = useState({ fullName: '', shippingName: '', phone: '', email: '', password: '' })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+
+  // Public self-signup is a customer thing — on the staff subdomain,
+  // the only way in is a login, or an invite link from an existing admin.
+  if (isAdminHost()) {
+    return <Navigate to="/login" replace />
+  }
 
   function update(field) {
     return (e) => setForm((f) => ({ ...f, [field]: e.target.value }))
@@ -21,10 +28,7 @@ export default function SignUp() {
     setLoading(true)
     try {
       await signUp(form)
-      // OTP verification isn't wired to a live SMS provider yet — see
-      // VerifyPhone.jsx and the TODO in AuthContext.jsx. For now this
-      // route shows what the flow looks like once that's connected.
-      navigate('/verify-phone', { state: { phone: form.phone } })
+      navigate('/')
     } catch (err) {
       setError(err.message || 'Something went wrong. Try again.')
     } finally {

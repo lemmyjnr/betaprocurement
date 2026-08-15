@@ -44,6 +44,7 @@ export default function AppShell({ children, title }) {
               <NavItem to="/admin/customers">Customers</NavItem>
               <NavItem to="/admin/batches">All batches</NavItem>
               <NavItem to="/admin/packing-lists">Packing lists</NavItem>
+              <NavItem to="/admin/staff">Staff</NavItem>
             </>
           ) : (
             <>

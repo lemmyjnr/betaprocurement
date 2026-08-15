@@ -124,9 +124,12 @@ create policy "view own profile or admin views all"
   on profiles for select
   using (id = auth.uid() or is_admin());
 
-create policy "admin can insert profiles"
+create policy "self-signup is always customer; admin can insert any role"
   on profiles for insert
-  with check (id = auth.uid() or is_admin());
+  with check (
+    (id = auth.uid() and role = 'customer')
+    or is_admin()
+  );
 
 create policy "user updates own profile or admin updates any"
   on profiles for update
@@ -156,19 +159,48 @@ create policy "view tracking numbers for accessible batches"
     )
   );
 
-create policy "add tracking numbers to accessible batches"
+-- A customer can add/edit/remove tracking numbers on their own batch
+-- only while it's still "submitted" or "received" — once it moves to
+-- in_transit (shipped) or later, only admin can touch it. Admin can
+-- always touch any batch, any status.
+create policy "add tracking numbers while batch is editable"
   on tracking_numbers for insert
   with check (
     exists (
       select 1 from batches
       where batches.id = tracking_numbers.batch_id
-      and (batches.customer_id = auth.uid() or is_admin())
+      and (
+        (batches.customer_id = auth.uid() and batches.status in ('submitted', 'received'))
+        or is_admin()
+      )
     )
   );
 
-create policy "admin updates tracking status"
+create policy "edit tracking numbers while batch is editable"
   on tracking_numbers for update
-  using (is_admin());
+  using (
+    exists (
+      select 1 from batches
+      where batches.id = tracking_numbers.batch_id
+      and (
+        (batches.customer_id = auth.uid() and batches.status in ('submitted', 'received'))
+        or is_admin()
+      )
+    )
+  );
+
+create policy "remove tracking numbers while batch is editable"
+  on tracking_numbers for delete
+  using (
+    exists (
+      select 1 from batches
+      where batches.id = tracking_numbers.batch_id
+      and (
+        (batches.customer_id = auth.uid() and batches.status in ('submitted', 'received'))
+        or is_admin()
+      )
+    )
+  );
 
 -- Packing lists
 create policy "view packing lists for accessible batches"
@@ -208,3 +240,70 @@ create policy "only admin edits packing list items"
 create policy "only admin deletes packing list items"
   on packing_list_items for delete
   using (is_admin());
+
+-- ============================================================
+-- Staff invites — lets an existing admin bring on new staff
+-- without ever touching this database directly. An admin
+-- generates a one-time link (a row here); whoever opens it sets
+-- their own password and becomes an admin, with the redemption
+-- itself locked down by redeem_staff_invite() below.
+-- ============================================================
+
+create table if not exists staff_invites (
+  id uuid primary key default gen_random_uuid(),
+  note text, -- optional reminder for the admin, e.g. "for Chidi"
+  created_by uuid not null references profiles(id),
+  expires_at timestamptz not null default (now() + interval '7 days'),
+  used_at timestamptz,
+  used_by uuid references profiles(id),
+  created_at timestamptz not null default now()
+);
+
+alter table staff_invites enable row level security;
+
+create policy "only admins manage staff invites"
+  on staff_invites for all
+  using (is_admin())
+  with check (is_admin());
+
+-- Lets an invite link check whether it's still good, before the
+-- person visiting it has an account or is logged in.
+create or replace function staff_invite_is_valid(invite_id uuid)
+returns boolean as $$
+  select exists (
+    select 1 from staff_invites
+    where id = invite_id and used_at is null and expires_at > now()
+  );
+$$ language sql security definer set search_path = public;
+
+grant execute on function staff_invite_is_valid(uuid) to anon, authenticated;
+
+-- The only sanctioned way for someone who isn't already an admin to
+-- end up with role = 'admin'. Called right after the invitee's own
+-- supabase.auth.signUp() succeeds, so auth.uid() is their new user id.
+-- Re-checks the invite is still valid (handles two people opening the
+-- same link at once) and marks it used so it can't be replayed.
+create or replace function redeem_staff_invite(
+  invite_id uuid,
+  p_full_name text,
+  p_phone text,
+  p_email text,
+  p_auth_email text
+)
+returns void as $$
+begin
+  if not exists (
+    select 1 from staff_invites
+    where id = invite_id and used_at is null and expires_at > now()
+  ) then
+    raise exception 'INVALID_INVITE';
+  end if;
+
+  insert into profiles (id, full_name, shipping_name, phone, email, auth_email, role, phone_verified)
+  values (auth.uid(), p_full_name, p_full_name, p_phone, p_email, p_auth_email, 'admin', true);
+
+  update staff_invites set used_at = now(), used_by = auth.uid() where id = invite_id;
+end;
+$$ language plpgsql security definer set search_path = public;
+
+grant execute on function redeem_staff_invite(uuid, text, text, text, text) to authenticated;

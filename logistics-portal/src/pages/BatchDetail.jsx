@@ -5,6 +5,12 @@ import StatusStamp from '../components/StatusStamp'
 import { supabase } from '../lib/supabaseClient'
 import { downloadPackingListCsv } from '../lib/exportCsv'
 
+// A batch stays editable by the customer up through "received" — once
+// it's in_transit (shipped) or further along, only admin can change it.
+const EDITABLE_STATUSES = ['submitted', 'received']
+
+const emptyWaybill = () => ({ id: null, waybill_number: '', courier_name: '', quantity: 1 })
+
 export default function BatchDetail() {
   const { id } = useParams()
   const [batch, setBatch] = useState(null)
@@ -12,26 +18,112 @@ export default function BatchDetail() {
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
 
+  const [isEditing, setIsEditing] = useState(false)
+  const [rows, setRows] = useState([])
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState('')
+
+  async function load() {
+    const [{ data: b }, { data: t }, { data: pl }] = await Promise.all([
+      supabase.from('batches').select('*').eq('id', id).single(),
+      supabase.from('tracking_numbers').select('*').eq('batch_id', id).order('created_at'),
+      supabase
+        .from('packing_lists')
+        .select('*, packing_list_items(*)')
+        .eq('batch_id', id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+    ])
+    setBatch(b)
+    setTracking(t || [])
+    setItems(pl?.packing_list_items || [])
+    setLoading(false)
+  }
+
   useEffect(() => {
-    async function load() {
-      const [{ data: b }, { data: t }, { data: pl }] = await Promise.all([
-        supabase.from('batches').select('*').eq('id', id).single(),
-        supabase.from('tracking_numbers').select('*').eq('batch_id', id).order('created_at'),
-        supabase
-          .from('packing_lists')
-          .select('*, packing_list_items(*)')
-          .eq('batch_id', id)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle(),
-      ])
-      setBatch(b)
-      setTracking(t || [])
-      setItems(pl?.packing_list_items || [])
-      setLoading(false)
-    }
     load()
   }, [id])
+
+  const editable = batch && EDITABLE_STATUSES.includes(batch.status)
+
+  function startEditing() {
+    setRows(
+      tracking.map((t) => ({
+        id: t.id,
+        waybill_number: t.waybill_number,
+        courier_name: t.courier_name,
+        quantity: t.quantity,
+      }))
+    )
+    setSaveError('')
+    setIsEditing(true)
+  }
+
+  function updateRow(index, field, value) {
+    setRows((rs) => rs.map((r, i) => (i === index ? { ...r, [field]: value } : r)))
+  }
+
+  function addRow() {
+    setRows((rs) => [...rs, emptyWaybill()])
+  }
+
+  function removeRow(index) {
+    setRows((rs) => rs.filter((_, i) => i !== index))
+  }
+
+  async function handleSave() {
+    setSaveError('')
+    const validRows = rows.filter((r) => r.waybill_number.trim())
+    if (validRows.length === 0) {
+      setSaveError('A batch needs at least one waybill. Remove the whole batch instead if you no longer need it.')
+      return
+    }
+
+    setSaving(true)
+    try {
+      const existingIds = new Set(tracking.map((t) => t.id))
+      const keptIds = new Set(validRows.filter((r) => r.id).map((r) => r.id))
+      const removedIds = [...existingIds].filter((tid) => !keptIds.has(tid))
+
+      const updates = validRows
+        .filter((r) => r.id)
+        .map((r) =>
+          supabase
+            .from('tracking_numbers')
+            .update({
+              waybill_number: r.waybill_number.trim(),
+              courier_name: r.courier_name.trim() || 'Not specified',
+              quantity: Number(r.quantity) || 1,
+            })
+            .eq('id', r.id)
+        )
+
+      const newRows = validRows
+        .filter((r) => !r.id)
+        .map((r) => ({
+          batch_id: id,
+          waybill_number: r.waybill_number.trim(),
+          courier_name: r.courier_name.trim() || 'Not specified',
+          quantity: Number(r.quantity) || 1,
+        }))
+
+      const ops = [...updates]
+      if (newRows.length > 0) ops.push(supabase.from('tracking_numbers').insert(newRows))
+      if (removedIds.length > 0) ops.push(supabase.from('tracking_numbers').delete().in('id', removedIds))
+
+      const results = await Promise.all(ops)
+      const failed = results.find((r) => r.error)
+      if (failed) throw failed.error
+
+      setIsEditing(false)
+      await load()
+    } catch (err) {
+      setSaveError(err.message || 'Could not save these changes. Try again.')
+    } finally {
+      setSaving(false)
+    }
+  }
 
   if (loading) {
     return (
@@ -63,20 +155,108 @@ export default function BatchDetail() {
         <StatusStamp status={batch.status} />
       </div>
 
-      <h2 className="font-display text-lg font-semibold text-ink mb-3">Tracking numbers</h2>
-      <div className="space-y-2 mb-8">
-        {tracking.map((t) => (
-          <div key={t.id} className="manifest-card p-4 flex items-center justify-between">
-            <div>
-              <div className="font-mono text-sm text-ink">{t.waybill_number}</div>
-              <div className="text-xs text-steel mt-0.5">
-                {t.courier_name} · Qty {t.quantity}
-              </div>
-            </div>
-            <StatusStamp status={t.status} />
-          </div>
-        ))}
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="font-display text-lg font-semibold text-ink">Tracking numbers</h2>
+        {editable && !isEditing && (
+          <button onClick={startEditing} className="text-sm font-medium text-amber hover:text-ink">
+            Edit
+          </button>
+        )}
       </div>
+
+      {!editable && (
+        <p className="text-xs text-steel mb-3">
+          This batch has shipped, so it&rsquo;s locked on your end — reach out to us if something needs to change.
+        </p>
+      )}
+
+      {isEditing ? (
+        <div className="mb-8">
+          <div className="space-y-4">
+            {rows.map((w, i) => (
+              <div key={w.id ?? `new-${i}`} className="manifest-card p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs uppercase tracking-wide text-steel">
+                    {w.id ? `Waybill ${i + 1}` : `Waybill ${i + 1} (new)`}
+                  </span>
+                  <button type="button" onClick={() => removeRow(i)} className="text-xs text-alert hover:underline">
+                    Remove
+                  </button>
+                </div>
+                <label className="block mb-3">
+                  <span className="block text-sm font-medium text-ink mb-1.5">Waybill number</span>
+                  <input
+                    value={w.waybill_number}
+                    onChange={(e) => updateRow(i, 'waybill_number', e.target.value)}
+                    className="w-full rounded-md border border-steel-line bg-white px-3.5 py-2.5 text-sm font-mono text-ink focus:border-amber outline-none"
+                  />
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  <label className="block">
+                    <span className="block text-sm font-medium text-ink mb-1.5">Courier name</span>
+                    <input
+                      value={w.courier_name}
+                      onChange={(e) => updateRow(i, 'courier_name', e.target.value)}
+                      className="w-full rounded-md border border-steel-line bg-white px-3.5 py-2.5 text-sm text-ink focus:border-amber outline-none"
+                    />
+                  </label>
+                  <label className="block">
+                    <span className="block text-sm font-medium text-ink mb-1.5">Quantity</span>
+                    <input
+                      type="number"
+                      min={1}
+                      value={w.quantity}
+                      onChange={(e) => updateRow(i, 'quantity', e.target.value)}
+                      className="w-full rounded-md border border-steel-line bg-white px-3.5 py-2.5 text-sm text-ink focus:border-amber outline-none"
+                    />
+                  </label>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <button
+            type="button"
+            onClick={addRow}
+            className="mt-4 text-sm font-medium text-ink border border-steel-line rounded-md px-4 py-2 hover:border-amber transition-colors"
+          >
+            + Add another waybill
+          </button>
+
+          {saveError && <p className="text-sm text-alert mt-4">{saveError}</p>}
+
+          <div className="flex gap-3 mt-6">
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="rounded-md bg-cargo text-white font-medium text-sm px-5 py-2.5 hover:opacity-90 transition-opacity disabled:opacity-50"
+            >
+              {saving ? 'Saving…' : 'Save changes'}
+            </button>
+            <button
+              onClick={() => setIsEditing(false)}
+              disabled={saving}
+              className="text-sm font-medium text-steel hover:text-ink"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-2 mb-8">
+          {tracking.map((t) => (
+            <div key={t.id} className="manifest-card p-4 flex items-center justify-between">
+              <div>
+                <div className="font-mono text-sm text-ink">{t.waybill_number}</div>
+                <div className="text-xs text-steel mt-0.5">
+                  {t.courier_name} · Qty {t.quantity}
+                </div>
+              </div>
+              <StatusStamp status={t.status} />
+            </div>
+          ))}
+        </div>
+      )}
 
       <div className="flex items-center justify-between mb-3">
         <h2 className="font-display text-lg font-semibold text-ink">Packing list</h2>

@@ -88,14 +88,9 @@ export function AuthProvider({ children }) {
       email: trimmedEmail || null,
       auth_email: authEmail,
       role: 'customer',
-      phone_verified: false, // flips to true once OTP verification is wired up
+      phone_verified: true, // no OTP step in this build — see the client decision noted in SignUp.jsx
     })
     if (profileError) throw profileError
-
-    // TODO: trigger OTP SMS here once an SMS provider (e.g. Termii,
-    // Africa's Talking) is chosen. See src/pages/VerifyPhone.jsx for
-    // the UI that's already waiting for that call.
-
     return userId
   }
 
@@ -115,13 +110,13 @@ export function AuthProvider({ children }) {
   // For staff creating a customer account on the client's behalf.
   // Requires the admin's session; RLS on profiles allows this because
   // is_admin() checks the caller's own role.
-  async function adminCreateCustomer({ fullName, shippingName, phone, email, password }) {
+  async function adminCreateCustomer({ fullName, shippingName, phone, email, password, role = 'customer' }) {
     const trimmedEmail = email?.trim().toLowerCase()
     const authEmail = trimmedEmail ? trimmedEmail : phoneToAuthEmail(phone)
     const { data, error } = await supabase.auth.signUp({ email: authEmail, password })
     if (error) throw error
     const userId = data.user?.id
-    if (!userId) throw new Error('Could not create the customer account.')
+    if (!userId) throw new Error('Could not create the account.')
 
     const { error: profileError } = await supabase.from('profiles').insert({
       id: userId,
@@ -130,10 +125,54 @@ export function AuthProvider({ children }) {
       phone,
       email: trimmedEmail || null,
       auth_email: authEmail,
-      role: 'customer',
+      role,
       phone_verified: true, // staff-created accounts skip OTP; they've verified the customer directly
     })
     if (profileError) throw profileError
+    return userId
+  }
+
+  // Admin generates a one-time link instead of typing a new staff
+  // member's password in for them. `note` is just for the admin's
+  // own memory (e.g. "for Chidi") — it's never shown to the invitee.
+  async function createStaffInvite({ note }) {
+    const { data, error } = await supabase
+      .from('staff_invites')
+      .insert({ note, created_by: session.user.id })
+      .select()
+      .single()
+    if (error) throw error
+    return data
+  }
+
+  async function checkStaffInvite(inviteId) {
+    const { data, error } = await supabase.rpc('staff_invite_is_valid', { invite_id: inviteId })
+    if (error) throw error
+    return data === true
+  }
+
+  // The invitee's own sign-up flow: create their login, then redeem
+  // the invite server-side to actually become an admin. See
+  // redeem_staff_invite() in the database — that's what enforces this
+  // is only possible with a real, unused, unexpired invite.
+  async function redeemStaffInvite({ inviteId, fullName, phone, email, password }) {
+    const trimmedEmail = email?.trim().toLowerCase()
+    const authEmail = trimmedEmail ? trimmedEmail : phoneToAuthEmail(phone)
+    const { data, error } = await supabase.auth.signUp({ email: authEmail, password })
+    if (error) throw error
+    const userId = data.user?.id
+    if (!userId) throw new Error('Sign up did not return a user.')
+
+    const { error: redeemError } = await supabase.rpc('redeem_staff_invite', {
+      invite_id: inviteId,
+      p_full_name: fullName,
+      p_phone: phone,
+      p_email: trimmedEmail || null,
+      p_auth_email: authEmail,
+    })
+    if (redeemError) throw redeemError
+
+    await loadProfile(userId)
     return userId
   }
 
@@ -146,6 +185,9 @@ export function AuthProvider({ children }) {
     signIn,
     signOut,
     adminCreateCustomer,
+    createStaffInvite,
+    checkStaffInvite,
+    redeemStaffInvite,
     refreshProfile: () => session?.user && loadProfile(session.user.id),
   }
 
