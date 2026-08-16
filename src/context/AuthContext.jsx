@@ -151,6 +151,19 @@ export function AuthProvider({ children }) {
     return data === true
   }
 
+  async function setAdminSuspended(targetId, shouldSuspend) {
+    const { error } = await supabase.rpc('set_admin_suspended', {
+      target_id: targetId,
+      should_suspend: shouldSuspend,
+    })
+    if (error) throw error
+  }
+
+  async function removeAdmin(targetId) {
+    const { error } = await supabase.rpc('remove_admin', { target_id: targetId })
+    if (error) throw error
+  }
+
   // The invitee's own sign-up flow: create their login, then redeem
   // the invite server-side to actually become an admin. See
   // redeem_staff_invite() in the database — that's what enforces this
@@ -181,6 +194,7 @@ export function AuthProvider({ children }) {
     profile,
     loading,
     isAdmin: profile?.role === 'admin',
+    isOwner: profile?.is_owner === true,
     signUp,
     signIn,
     signOut,
@@ -188,6 +202,8 @@ export function AuthProvider({ children }) {
     createStaffInvite,
     checkStaffInvite,
     redeemStaffInvite,
+    setAdminSuspended,
+    removeAdmin,
     refreshProfile: () => session?.user && loadProfile(session.user.id),
   }
 

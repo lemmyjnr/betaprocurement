@@ -1,6 +1,6 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
-import { RequireAuth, RequireAdmin } from './components/ProtectedRoute'
+import { RequireAuth, RequireAdmin, RequireOwner } from './components/ProtectedRoute'
 
 import Login from './pages/Login'
 import SignUp from './pages/SignUp'
@@ -41,7 +41,7 @@ export default function App() {
           <Route path="/admin/batches" element={<RequireAdmin><AdminBatches /></RequireAdmin>} />
           <Route path="/admin/batches/:id" element={<RequireAdmin><AdminBatchDetail /></RequireAdmin>} />
           <Route path="/admin/packing-lists" element={<RequireAdmin><AdminBatches /></RequireAdmin>} />
-          <Route path="/admin/staff" element={<RequireAdmin><AdminStaff /></RequireAdmin>} />
+          <Route path="/admin/staff" element={<RequireOwner><AdminStaff /></RequireOwner>} />
         </Routes>
       </AuthProvider>
     </BrowserRouter>

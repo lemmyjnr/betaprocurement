@@ -1,5 +1,6 @@
 import { NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import BrandMark from './BrandMark'
 
 function NavItem({ to, children, end }) {
   return (
@@ -18,7 +19,7 @@ function NavItem({ to, children, end }) {
 }
 
 export default function AppShell({ children, title }) {
-  const { profile, isAdmin, signOut } = useAuth()
+  const { profile, isAdmin, isOwner, signOut } = useAuth()
   const navigate = useNavigate()
 
   async function handleSignOut() {
@@ -29,9 +30,12 @@ export default function AppShell({ children, title }) {
   return (
     <div className="min-h-screen bg-paper lg:grid lg:grid-cols-[240px_1fr]">
       <aside className="bg-ink text-paper px-4 py-6 flex flex-col lg:sticky lg:top-0 lg:h-screen">
-        <div className="px-2 mb-8">
-          <div className="font-mono text-[10px] tracking-[0.2em] text-amber uppercase">Shipment Tracking</div>
-          <div className="font-display text-lg font-semibold">Beta Procurement</div>
+        <div className="px-2 mb-8 flex items-center gap-3">
+          <BrandMark size={40} />
+          <div>
+            <div className="font-mono text-[10px] tracking-[0.2em] text-amber uppercase">Shipment Tracking</div>
+            <div className="font-display text-lg font-semibold leading-tight">Beta Logistics</div>
+          </div>
         </div>
 
         <nav className="space-y-1 flex-1">
@@ -44,7 +48,7 @@ export default function AppShell({ children, title }) {
               <NavItem to="/admin/customers">Customers</NavItem>
               <NavItem to="/admin/batches">All batches</NavItem>
               <NavItem to="/admin/packing-lists">Packing lists</NavItem>
-              <NavItem to="/admin/staff">Staff</NavItem>
+              {isOwner && <NavItem to="/admin/staff">Staff</NavItem>}
             </>
           ) : (
             <>

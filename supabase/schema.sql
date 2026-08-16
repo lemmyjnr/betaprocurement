@@ -3,15 +3,15 @@
 -- Run this in the Supabase SQL editor on a fresh project.
 -- ============================================================
 
--- Supabase auth.users needs an email to sign up with a password.
--- A customer can give us a real email at sign up, or just a phone
--- number — in that case the app writes a synthetic email like
--- "2348012345678@phone.betaprocurement-portal.com" into auth.users.
--- Either way, the phone number (always required) and the real email
--- (if given) both live here, in profiles. `auth_email` is always the
--- exact value that was used as the Supabase Auth identity — it's how
--- login looks up the right account whether someone types their phone
--- or their email (see auth_email_for_identifier below).
+-- The one "main admin" who can bring on other staff. Regular admins
+-- can do everything else (customers, batches, packing lists) but
+-- can't create more admins — only the owner can. See is_owner()
+-- below and the staff_invites policy that depends on it.
+--
+-- `suspended` lets the owner pause a staff member's access without
+-- deleting their account — is_admin() checks it below, so a
+-- suspended admin is immediately blocked from every admin-only table,
+-- even if they're still logged in.
 create table if not exists profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   full_name text not null,
@@ -20,6 +20,8 @@ create table if not exists profiles (
   email text unique,
   auth_email text unique,
   role text not null default 'customer' check (role in ('customer', 'admin')),
+  is_owner boolean not null default false,
+  suspended boolean not null default false,
   phone_verified boolean not null default false,
   created_at timestamptz not null default now()
 );
@@ -100,7 +102,15 @@ alter table packing_list_items enable row level security;
 create or replace function is_admin()
 returns boolean as $$
   select exists (
-    select 1 from profiles where id = auth.uid() and role = 'admin'
+    select 1 from profiles
+    where id = auth.uid() and role = 'admin' and coalesce(suspended, false) = false
+  );
+$$ language sql security definer;
+
+create or replace function is_owner()
+returns boolean as $$
+  select exists (
+    select 1 from profiles where id = auth.uid() and is_owner = true
   );
 $$ language sql security definer;
 
@@ -261,10 +271,10 @@ create table if not exists staff_invites (
 
 alter table staff_invites enable row level security;
 
-create policy "only admins manage staff invites"
+create policy "only the owner manages staff invites"
   on staff_invites for all
-  using (is_admin())
-  with check (is_admin());
+  using (is_owner())
+  with check (is_owner());
 
 -- Lets an invite link check whether it's still good, before the
 -- person visiting it has an account or is logged in.
@@ -307,3 +317,43 @@ end;
 $$ language plpgsql security definer set search_path = public;
 
 grant execute on function redeem_staff_invite(uuid, text, text, text, text) to authenticated;
+
+-- The owner's controls over other admins. Both bypass RLS (security
+-- definer) and do their own is_owner() check inline, so they work
+-- regardless of what the general profiles policies allow — and
+-- neither lets the owner target their own account, so there's no way
+-- to accidentally lock yourself out.
+create or replace function set_admin_suspended(target_id uuid, should_suspend boolean)
+returns void as $$
+begin
+  if not is_owner() then
+    raise exception 'NOT_OWNER';
+  end if;
+  if target_id = auth.uid() then
+    raise exception 'CANNOT_TARGET_SELF';
+  end if;
+  update profiles set suspended = should_suspend where id = target_id and role = 'admin';
+end;
+$$ language plpgsql security definer set search_path = public;
+
+grant execute on function set_admin_suspended(uuid, boolean) to authenticated;
+
+-- Removes someone's admin profile entirely — they immediately lose
+-- all admin access, since is_admin()/is_owner() depend on this row
+-- existing. Their login credentials remain in Supabase Auth itself
+-- (removing those needs the Admin API, which isn't available from
+-- the browser), but without a profile they have nothing to log into.
+create or replace function remove_admin(target_id uuid)
+returns void as $$
+begin
+  if not is_owner() then
+    raise exception 'NOT_OWNER';
+  end if;
+  if target_id = auth.uid() then
+    raise exception 'CANNOT_TARGET_SELF';
+  end if;
+  delete from profiles where id = target_id and role = 'admin';
+end;
+$$ language plpgsql security definer set search_path = public;
+
+grant execute on function remove_admin(uuid) to authenticated;

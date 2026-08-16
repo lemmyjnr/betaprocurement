@@ -1,3 +1,5 @@
+import BrandMark from './BrandMark'
+
 // The signature visual for auth screens: a stack of "crates" built
 // entirely from CSS, standing in for the batches/packages the whole
 // product is organized around. No stock art, no plane/ship clip art.
@@ -27,9 +29,12 @@ export default function AuthLayout({ eyebrow, title, subtitle, children }) {
   return (
     <div className="min-h-screen grid lg:grid-cols-2 bg-paper">
       <div className="hidden lg:flex flex-col justify-between bg-ink text-paper px-12 py-10">
-        <div>
-          <div className="font-mono text-xs tracking-[0.2em] text-amber uppercase">Shipment Tracking</div>
-          <div className="mt-2 font-display text-2xl font-semibold">Beta Procurement</div>
+        <div className="flex items-center gap-3">
+          <BrandMark size={48} />
+          <div>
+            <div className="font-mono text-xs tracking-[0.2em] text-amber uppercase">Shipment Tracking</div>
+            <div className="mt-0.5 font-display text-2xl font-semibold leading-tight">Beta Logistics</div>
+          </div>
         </div>
 
         <div className="max-w-sm">
@@ -45,9 +50,12 @@ export default function AuthLayout({ eyebrow, title, subtitle, children }) {
 
       <div className="flex items-center justify-center px-6 py-12">
         <div className="w-full max-w-sm">
-          <div className="lg:hidden mb-8">
-            <div className="font-mono text-xs tracking-[0.2em] text-amber uppercase">Shipment Tracking</div>
-            <div className="mt-1 font-display text-xl font-semibold text-ink">Beta Procurement</div>
+          <div className="lg:hidden mb-8 flex items-center gap-3">
+            <BrandMark size={40} />
+            <div>
+              <div className="font-mono text-xs tracking-[0.2em] text-amber uppercase">Shipment Tracking</div>
+              <div className="mt-0.5 font-display text-xl font-semibold text-ink leading-tight">Beta Logistics</div>
+            </div>
           </div>
 
           {eyebrow && (

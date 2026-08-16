@@ -5,7 +5,7 @@ import { supabase } from '../../lib/supabaseClient'
 import { useAuth } from '../../context/AuthContext'
 
 export default function AdminStaff() {
-  const { createStaffInvite, profile } = useAuth()
+  const { createStaffInvite, setAdminSuspended, removeAdmin, profile } = useAuth()
   const [staff, setStaff] = useState([])
   const [invites, setInvites] = useState([])
   const [loading, setLoading] = useState(true)
@@ -13,6 +13,7 @@ export default function AdminStaff() {
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState('')
   const [copiedId, setCopiedId] = useState(null)
+  const [busyId, setBusyId] = useState(null)
 
   function load() {
     Promise.all([
@@ -55,6 +56,31 @@ export default function AdminStaff() {
     navigator.clipboard.writeText(inviteLink(inviteId))
     setCopiedId(inviteId)
     setTimeout(() => setCopiedId(null), 2000)
+  }
+
+  async function togglePause(member) {
+    setBusyId(member.id)
+    try {
+      await setAdminSuspended(member.id, !member.suspended)
+      load()
+    } catch (err) {
+      alert(err.message || 'Could not update this account.')
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  async function handleRemove(member) {
+    if (!confirm(`Remove ${member.full_name}\u2019s admin access? This can\u2019t be undone from here.`)) return
+    setBusyId(member.id)
+    try {
+      await removeAdmin(member.id)
+      load()
+    } catch (err) {
+      alert(err.message || 'Could not remove this account.')
+    } finally {
+      setBusyId(null)
+    }
   }
 
   return (
@@ -103,17 +129,49 @@ export default function AdminStaff() {
 
           <h2 className="text-sm font-semibold text-ink mb-3">Staff</h2>
           <div className="space-y-2">
-            {staff.map((s) => (
-              <div key={s.id} className="manifest-card p-4 flex items-center justify-between">
-                <div>
-                  <div className="text-sm text-ink font-medium">
-                    {s.full_name}
-                    {s.id === profile?.id && <span className="text-steel font-normal"> (you)</span>}
+            {staff.map((s) => {
+              const isSelf = s.id === profile?.id
+              return (
+                <div key={s.id} className="manifest-card p-4 flex items-center justify-between gap-4">
+                  <div>
+                    <div className="text-sm text-ink font-medium flex items-center gap-2">
+                      {s.full_name}
+                      {isSelf && <span className="text-steel font-normal">(you)</span>}
+                      {s.is_owner && (
+                        <span className="text-[10px] uppercase tracking-wide bg-ink text-white rounded px-1.5 py-0.5">
+                          Owner
+                        </span>
+                      )}
+                      {s.suspended && (
+                        <span className="text-[10px] uppercase tracking-wide bg-alert/10 text-alert rounded px-1.5 py-0.5">
+                          Paused
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-xs text-steel mt-0.5">{s.phone}</div>
                   </div>
-                  <div className="text-xs text-steel mt-0.5">{s.phone}</div>
+
+                  {!isSelf && !s.is_owner && (
+                    <div className="flex items-center gap-3 shrink-0">
+                      <button
+                        onClick={() => togglePause(s)}
+                        disabled={busyId === s.id}
+                        className="text-xs font-medium text-ink hover:text-amber disabled:opacity-50"
+                      >
+                        {s.suspended ? 'Reactivate' : 'Pause'}
+                      </button>
+                      <button
+                        onClick={() => handleRemove(s)}
+                        disabled={busyId === s.id}
+                        className="text-xs font-medium text-alert hover:underline disabled:opacity-50"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  )}
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         </>
       )}

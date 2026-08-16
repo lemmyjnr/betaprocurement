@@ -43,7 +43,7 @@ export default function Login() {
       title="Log in"
       subtitle={
         adminHost
-          ? 'This login is for Beta Procurement staff.'
+          ? 'This login is for Beta Logistics staff.'
           : 'Use the phone number or email you signed up with.'
       }
     >
