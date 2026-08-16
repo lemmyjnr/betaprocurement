@@ -11,7 +11,8 @@ const emptyItem = () => ({ item_name: '', quantity: 1, weight: '', weight_unit: 
 
 export default function AdminBatchDetail() {
   const { id } = useParams()
-  const { profile } = useAuth()
+  const { profile, session } = useAuth()
+  const uploaderId = profile?.id || session?.user?.id
   const [batch, setBatch] = useState(null)
   const [tracking, setTracking] = useState([])
   const [packingList, setPackingList] = useState(null)
@@ -73,6 +74,10 @@ export default function AdminBatchDetail() {
   async function handleAddItem(e) {
     e.preventDefault()
     if (!newItem.item_name.trim()) return
+    if (!uploaderId) {
+      setMessage('Still loading your account — give it a second and try again.')
+      return
+    }
     setSavingItem(true)
     setMessage('')
     try {
@@ -82,7 +87,7 @@ export default function AdminBatchDetail() {
       if (!listId) {
         const { data: created, error: createError } = await supabase
           .from('packing_lists')
-          .insert({ batch_id: id, uploaded_by: profile.id })
+          .insert({ batch_id: id, uploaded_by: uploaderId })
           .select()
           .single()
         if (createError) throw createError

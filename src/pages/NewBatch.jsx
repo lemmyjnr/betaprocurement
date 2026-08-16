@@ -13,13 +13,20 @@ function generateBatchCode() {
 }
 
 export default function NewBatch() {
-  const { profile } = useAuth()
+  const { profile, session } = useAuth()
   const navigate = useNavigate()
   const [serviceType, setServiceType] = useState('sea_shipping')
   const [route, setRoute] = useState('china_nigeria')
   const [waybills, setWaybills] = useState([emptyWaybill()])
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+
+  // The session's user id is available the instant someone's logged
+  // in, the profile row can take a moment longer to fetch. Prefer
+  // profile.id when it's there (same value either way), but fall
+  // back to the session so a fast click right after page load never
+  // crashes on a still-loading profile.
+  const customerId = profile?.id || session?.user?.id
 
   function updateWaybill(index, field, value) {
     setWaybills((rows) => rows.map((r, i) => (i === index ? { ...r, [field]: value } : r)))
@@ -42,6 +49,10 @@ export default function NewBatch() {
       setError('Add at least one waybill number.')
       return
     }
+    if (!customerId) {
+      setError('Still loading your account — give it a second and try again.')
+      return
+    }
 
     setLoading(true)
     try {
@@ -52,8 +63,8 @@ export default function NewBatch() {
         .from('batches')
         .insert({
           batch_code: generateBatchCode(),
-          customer_id: profile.id,
-          created_by: profile.id,
+          customer_id: customerId,
+          created_by: customerId,
           service_type: serviceType,
           route,
         })
