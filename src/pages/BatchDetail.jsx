@@ -9,7 +9,7 @@ import { downloadPackingListCsv } from '../lib/exportCsv'
 // it's in_transit (shipped) or further along, only admin can change it.
 const EDITABLE_STATUSES = ['submitted', 'received']
 
-const emptyWaybill = () => ({ id: null, waybill_number: '', courier_name: '', quantity: 1 })
+const emptyWaybill = () => ({ id: null, waybill_number: '' })
 
 export default function BatchDetail() {
   const { id } = useParams()
@@ -52,8 +52,6 @@ export default function BatchDetail() {
       tracking.map((t) => ({
         id: t.id,
         waybill_number: t.waybill_number,
-        courier_name: t.courier_name,
-        quantity: t.quantity,
       }))
     )
     setSaveError('')
@@ -93,8 +91,6 @@ export default function BatchDetail() {
             .from('tracking_numbers')
             .update({
               waybill_number: r.waybill_number.trim(),
-              courier_name: r.courier_name.trim() || 'Not specified',
-              quantity: Number(r.quantity) || 1,
             })
             .eq('id', r.id)
         )
@@ -104,8 +100,6 @@ export default function BatchDetail() {
         .map((r) => ({
           batch_id: id,
           waybill_number: r.waybill_number.trim(),
-          courier_name: r.courier_name.trim() || 'Not specified',
-          quantity: Number(r.quantity) || 1,
         }))
 
       const ops = [...updates]
@@ -149,7 +143,7 @@ export default function BatchDetail() {
           <h1 className="font-display text-2xl font-semibold text-ink font-mono">{batch.batch_code}</h1>
           <div className="text-sm text-steel mt-1 flex gap-2">
             {batch.service_type && <span className="capitalize">{batch.service_type.replace('_', ' ')}</span>}
-            {batch.route && <span>· {batch.route.replace('_', ' \u2192 ')}</span>}
+            {batch.route && <span>· {batch.route.replace('_', ' - ')}</span>}
           </div>
         </div>
         <StatusStamp status={batch.status} />
@@ -183,7 +177,7 @@ export default function BatchDetail() {
                     Remove
                   </button>
                 </div>
-                <label className="block mb-3">
+                <label className="block">
                   <span className="block text-sm font-medium text-ink mb-1.5">Waybill number</span>
                   <input
                     value={w.waybill_number}
@@ -191,26 +185,6 @@ export default function BatchDetail() {
                     className="w-full rounded-md border border-steel-line bg-white px-3.5 py-2.5 text-sm font-mono text-ink focus:border-amber outline-none"
                   />
                 </label>
-                <div className="grid grid-cols-2 gap-3">
-                  <label className="block">
-                    <span className="block text-sm font-medium text-ink mb-1.5">Courier name</span>
-                    <input
-                      value={w.courier_name}
-                      onChange={(e) => updateRow(i, 'courier_name', e.target.value)}
-                      className="w-full rounded-md border border-steel-line bg-white px-3.5 py-2.5 text-sm text-ink focus:border-amber outline-none"
-                    />
-                  </label>
-                  <label className="block">
-                    <span className="block text-sm font-medium text-ink mb-1.5">Quantity</span>
-                    <input
-                      type="number"
-                      min={1}
-                      value={w.quantity}
-                      onChange={(e) => updateRow(i, 'quantity', e.target.value)}
-                      className="w-full rounded-md border border-steel-line bg-white px-3.5 py-2.5 text-sm text-ink focus:border-amber outline-none"
-                    />
-                  </label>
-                </div>
               </div>
             ))}
           </div>
@@ -249,7 +223,9 @@ export default function BatchDetail() {
               <div>
                 <div className="font-mono text-sm text-ink">{t.waybill_number}</div>
                 <div className="text-xs text-steel mt-0.5">
-                  {t.courier_name} · Qty {t.quantity}
+                  {t.courier_name || t.quantity
+                    ? `${t.courier_name || 'Courier pending'} · Qty ${t.quantity ?? 'pending'}`
+                    : 'Awaiting confirmation from our team'}
                 </div>
               </div>
               <StatusStamp status={t.status} />
@@ -277,20 +253,22 @@ export default function BatchDetail() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-steel-line text-left text-xs uppercase tracking-wide text-steel">
-                <th className="px-4 py-3 font-medium">Item</th>
                 <th className="px-4 py-3 font-medium">Qty</th>
-                <th className="px-4 py-3 font-medium">Weight</th>
+                <th className="px-4 py-3 font-medium">Weight (kg)</th>
+                <th className="px-4 py-3 font-medium">CBM</th>
+                <th className="px-4 py-3 font-medium">Price/CBM</th>
+                <th className="px-4 py-3 font-medium">Amount ($)</th>
                 <th className="px-4 py-3 font-medium">Notes</th>
               </tr>
             </thead>
             <tbody>
               {items.map((item) => (
                 <tr key={item.id} className="border-b border-steel-line last:border-0">
-                  <td className="px-4 py-3 text-ink">{item.item_name}</td>
                   <td className="px-4 py-3 text-ink">{item.quantity}</td>
-                  <td className="px-4 py-3 text-ink">
-                    {item.weight ? `${item.weight} ${item.weight_unit}` : '—'}
-                  </td>
+                  <td className="px-4 py-3 text-ink">{item.weight ?? '—'}</td>
+                  <td className="px-4 py-3 text-ink">{item.cbm ?? '—'}</td>
+                  <td className="px-4 py-3 text-ink">{item.price_per_cbm ?? '—'}</td>
+                  <td className="px-4 py-3 text-ink">{item.amount ?? '—'}</td>
                   <td className="px-4 py-3 text-steel">{item.notes || '—'}</td>
                 </tr>
               ))}

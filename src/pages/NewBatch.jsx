@@ -4,7 +4,7 @@ import AppShell from '../components/AppShell'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
 
-const emptyWaybill = () => ({ waybill_number: '', courier_name: '', quantity: 1 })
+const emptyWaybill = () => ({ waybill_number: '' })
 
 function generateBatchCode() {
   const year = new Date().getFullYear()
@@ -15,7 +15,7 @@ function generateBatchCode() {
 export default function NewBatch() {
   const { profile, session } = useAuth()
   const navigate = useNavigate()
-  const [serviceType, setServiceType] = useState('sea_shipping')
+  const [serviceType, setServiceType] = useState('sea_freight')
   const [route, setRoute] = useState('china_nigeria')
   const [waybills, setWaybills] = useState([emptyWaybill()])
   const [error, setError] = useState('')
@@ -75,8 +75,6 @@ export default function NewBatch() {
       const rows = validRows.map((w) => ({
         batch_id: batch.id,
         waybill_number: w.waybill_number.trim(),
-        courier_name: w.courier_name.trim() || 'Not specified',
-        quantity: Number(w.quantity) || 1,
       }))
       const { error: trackingError } = await supabase.from('tracking_numbers').insert(rows)
       if (trackingError) throw trackingError
@@ -105,8 +103,9 @@ export default function NewBatch() {
               onChange={(e) => setServiceType(e.target.value)}
               className="w-full rounded-md border border-steel-line bg-white px-3.5 py-2.5 text-sm text-ink focus:border-amber outline-none"
             >
-              <option value="sea_shipping">Sea Shipping</option>
-              <option value="air_cargo">Air Cargo / Express</option>
+              <option value="sea_freight">Sea Freight</option>
+              <option value="air_freight">Air Freight</option>
+              <option value="express">Express</option>
             </select>
           </label>
           <label className="block">
@@ -116,8 +115,8 @@ export default function NewBatch() {
               onChange={(e) => setRoute(e.target.value)}
               className="w-full rounded-md border border-steel-line bg-white px-3.5 py-2.5 text-sm text-ink focus:border-amber outline-none"
             >
-              <option value="china_nigeria">China \u2192 Nigeria</option>
-              <option value="dubai_nigeria">Dubai \u2192 Nigeria</option>
+              <option value="china_nigeria">China - Nigeria</option>
+              <option value="dubai_nigeria">Dubai - Nigeria</option>
             </select>
           </label>
         </div>
@@ -138,7 +137,7 @@ export default function NewBatch() {
                 )}
               </div>
 
-              <label className="block mb-3">
+              <label className="block">
                 <span className="block text-sm font-medium text-ink mb-1.5">Waybill number</span>
                 <input
                   required
@@ -148,28 +147,6 @@ export default function NewBatch() {
                   placeholder="e.g. 71009618..."
                 />
               </label>
-
-              <div className="grid grid-cols-2 gap-3">
-                <label className="block">
-                  <span className="block text-sm font-medium text-ink mb-1.5">Courier name</span>
-                  <input
-                    value={w.courier_name}
-                    onChange={(e) => updateWaybill(i, 'courier_name', e.target.value)}
-                    className="w-full rounded-md border border-steel-line bg-white px-3.5 py-2.5 text-sm text-ink focus:border-amber outline-none"
-                    placeholder="e.g. GZ Sea Cargo"
-                  />
-                </label>
-                <label className="block">
-                  <span className="block text-sm font-medium text-ink mb-1.5">Quantity</span>
-                  <input
-                    type="number"
-                    min={1}
-                    value={w.quantity}
-                    onChange={(e) => updateWaybill(i, 'quantity', e.target.value)}
-                    className="w-full rounded-md border border-steel-line bg-white px-3.5 py-2.5 text-sm text-ink focus:border-amber outline-none"
-                  />
-                </label>
-              </div>
             </div>
           ))}
         </div>

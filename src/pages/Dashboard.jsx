@@ -29,6 +29,16 @@ export default function Dashboard() {
 
   return (
     <AppShell title={`Good to see you, ${profile?.full_name?.split(' ')[0] || ''}`}>
+      {profile && !profile.email && (
+        <Link
+          to="/account"
+          className="mb-6 flex items-center justify-between gap-4 rounded-md border border-amber bg-amber-dim px-4 py-3 text-sm hover:border-ink transition-colors"
+        >
+          <span className="text-ink">Add your email so we can send you shipment status updates.</span>
+          <span className="font-medium text-ink whitespace-nowrap">Add email →</span>
+        </Link>
+      )}
+
       <div className="grid sm:grid-cols-2 gap-4 mb-8">
         <div className="manifest-card p-5">
           <div className="text-xs uppercase tracking-wide text-steel mb-1">Pending batches</div>

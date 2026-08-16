@@ -61,7 +61,7 @@ export default function AppShell({ children, title }) {
             </>
           )}
           <div className="px-3.5 text-[11px] uppercase tracking-wide text-paper/40 mt-6 mb-1">Account</div>
-          <NavItem to="/account">Change password</NavItem>
+          <NavItem to="/account">Account</NavItem>
         </nav>
 
         <div className="px-2 pt-4 border-t border-white/10">

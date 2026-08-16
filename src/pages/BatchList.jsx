@@ -47,7 +47,7 @@ export default function BatchList() {
                 <div className="text-xs text-steel mt-0.5 flex gap-2">
                   <span>{b.tracking_numbers?.[0]?.count ?? 0} tracking number(s)</span>
                   {b.service_type && <span>· {b.service_type.replace('_', ' ')}</span>}
-                  {b.route && <span>· {b.route.replace('_', ' \u2192 ')}</span>}
+                  {b.route && <span>· {b.route.replace('_', ' - ')}</span>}
                 </div>
               </div>
               <StatusStamp status={b.status} />

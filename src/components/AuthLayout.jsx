@@ -1,34 +1,28 @@
 import BrandMark from './BrandMark'
 
-// The signature visual for auth screens: a stack of "crates" built
-// entirely from CSS, standing in for the batches/packages the whole
-// product is organized around. No stock art, no plane/ship clip art.
-function CrateStack() {
-  const crates = [
-    { code: 'BCH-0231', w: 72 },
-    { code: 'BCH-0230', w: 100 },
-    { code: 'BCH-0229', w: 84 },
-  ]
-  return (
-    <div className="flex flex-col items-start gap-3">
-      {crates.map((c, i) => (
-        <div
-          key={c.code}
-          className="manifest-card px-4 py-3 flex items-center justify-between gap-6"
-          style={{ width: `${c.w}%`, opacity: 1 - i * 0.18 }}
-        >
-          <span className="font-mono text-xs tracking-wide text-ink-soft">{c.code}</span>
-          <span className="stamp text-cargo">received</span>
-        </div>
-      ))}
-    </div>
-  )
-}
+// Swap in a real courier/warehouse photo once you have one licensed
+// for commercial use — drop the file in /public and point this at
+// it, e.g. '/courier-photo.jpg'. Until then this quietly falls back
+// to a plain dark panel instead of breaking or showing a missing
+// image icon. See the README for where to get a free, properly
+// licensed photo (Unsplash) and search terms that fit.
+const COURIER_PHOTO_PATH = '/courier-photo.jpg'
 
 export default function AuthLayout({ eyebrow, title, subtitle, children }) {
   return (
     <div className="min-h-screen grid lg:grid-cols-2 bg-paper">
-      <div className="hidden lg:flex flex-col justify-between bg-ink text-paper px-12 py-10">
+      <div
+        className="hidden lg:flex flex-col justify-between bg-ink text-paper px-12 py-10 relative overflow-hidden"
+        style={
+          COURIER_PHOTO_PATH
+            ? {
+                backgroundImage: `linear-gradient(to bottom, rgba(18,32,58,0.75), rgba(18,32,58,0.92)), url(${COURIER_PHOTO_PATH})`,
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+              }
+            : undefined
+        }
+      >
         <div className="flex items-center gap-3">
           <BrandMark size={48} />
           <div>
@@ -37,15 +31,12 @@ export default function AuthLayout({ eyebrow, title, subtitle, children }) {
           </div>
         </div>
 
-        <div className="max-w-sm">
-          <p className="text-sm text-paper/70 mb-6 leading-relaxed">
-            Every batch you upload gets its own reference code, so nothing
-            from a past shipment ever mixes with a new one.
-          </p>
-          <CrateStack />
-        </div>
+        <p className="text-sm text-paper/70 mb-2 leading-relaxed max-w-sm">
+          Every batch you upload gets its own reference code, so nothing
+          from a past shipment ever mixes with a new one.
+        </p>
 
-        <p className="text-xs text-paper/40 font-mono">China · Dubai routes — Air Cargo &amp; Sea Shipping</p>
+        <p className="text-xs text-paper/40 font-mono">China - Dubai routes — Sea Freight, Air Freight &amp; Express</p>
       </div>
 
       <div className="flex items-center justify-center px-6 py-12">

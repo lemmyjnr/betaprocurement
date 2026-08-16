@@ -71,8 +71,9 @@ export default function SignUp() {
           />
         </FormField>
 
-        <FormField label="Email (optional)" error="Add this to also log in with email, or to reset your password later.">
+        <FormField label="Email address" error="We'll use this to send you shipment status updates.">
           <TextInput
+            required
             type="email"
             value={form.email}
             onChange={update('email')}
