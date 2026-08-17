@@ -1,5 +1,5 @@
 export function downloadPackingListCsv(batchCode, items) {
-  const header = ['Quantity', 'Weight (kg)', 'CBM', 'Price/CBM', 'Amount ($)', 'Notes']
+  const header = ['Quantity', 'Weight (kg)', 'CBM', 'Price per CBM', 'Amount ($)', 'Notes']
   const rows = items.map((i) => [i.quantity, i.weight ?? '', i.cbm ?? '', i.price_per_cbm ?? '', i.amount ?? '', i.notes ?? ''])
 
   const csv = [header, ...rows]

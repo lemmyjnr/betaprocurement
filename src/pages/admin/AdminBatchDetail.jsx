@@ -4,10 +4,34 @@ import AppShell from '../../components/AppShell'
 import StatusStamp from '../../components/StatusStamp'
 import { supabase } from '../../lib/supabaseClient'
 import { useAuth } from '../../context/AuthContext'
+import { formatServiceType, formatRoute } from '../../lib/labels'
 
 const BATCH_STATUSES = ['submitted', 'received', 'in_transit', 'arrived_port', 'clearing', 'delivered']
+const BATCH_STATUS_LABELS = {
+  submitted: 'Submitted',
+  received: 'Received',
+  in_transit: 'In transit',
+  arrived_port: 'Arrived at port',
+  clearing: 'Clearing',
+  delivered: 'Delivered',
+}
 
-const emptyItem = () => ({ quantity: 1, weight: '', cbm: '', price_per_cbm: '', amount: '', notes: '' })
+// Tracking-number status is deliberately just these two — the fuller
+// lifecycle lives at the order level (the dropdown above).
+const TRACKING_STATUSES = ['pending', 'received']
+const TRACKING_STATUS_LABELS = { pending: 'Pending', received: 'Received' }
+
+const emptyItem = () => ({
+  quantity: 1,
+  weight: '',
+  cbm: '',
+  price_per_cbm: '',
+  amount: '',
+  notes: '',
+  length: '',
+  width: '',
+  height: '',
+})
 
 export default function AdminBatchDetail() {
   const { id } = useParams()
@@ -18,8 +42,9 @@ export default function AdminBatchDetail() {
   const [packingList, setPackingList] = useState(null)
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
-  const [newWaybill, setNewWaybill] = useState({ waybill_number: '', courier_name: '', quantity: 1 })
+  const [newWaybill, setNewWaybill] = useState({ waybill_number: '', quantity: 1 })
   const [newItem, setNewItem] = useState(emptyItem())
+  const [useDimensions, setUseDimensions] = useState(false)
   const [savingItem, setSavingItem] = useState(false)
   const [message, setMessage] = useState('')
 
@@ -58,7 +83,7 @@ export default function AdminBatchDetail() {
   async function handleTrackingFieldSave(trackingId, field, value) {
     await supabase
       .from('tracking_numbers')
-      .update({ [field]: field === 'quantity' ? Number(value) || null : value.trim() || null })
+      .update({ [field]: field === 'quantity' ? Number(value) || null : value })
       .eq('id', trackingId)
   }
 
@@ -73,11 +98,10 @@ export default function AdminBatchDetail() {
     const { error } = await supabase.from('tracking_numbers').insert({
       batch_id: id,
       waybill_number: newWaybill.waybill_number.trim(),
-      courier_name: newWaybill.courier_name.trim() || 'Not specified',
       quantity: Number(newWaybill.quantity) || 1,
     })
     if (!error) {
-      setNewWaybill({ waybill_number: '', courier_name: '', quantity: 1 })
+      setNewWaybill({ waybill_number: '', quantity: 1 })
       loadAll()
     }
   }
@@ -85,12 +109,23 @@ export default function AdminBatchDetail() {
   function updateNewItemField(field, value) {
     setNewItem((it) => {
       const next = { ...it, [field]: value }
-      // Convenience: auto-fill Amount from CBM × Price/CBM whenever
-      // either changes, admin can still type over it afterward if
-      // the real amount differs.
-      if (field === 'cbm' || field === 'price_per_cbm') {
+
+      // If dimensions are being used, CBM is derived from them
+      // automatically: (L × W × H in cm) ÷ 1,000,000.
+      if (useDimensions && ['length', 'width', 'height'].includes(field)) {
+        const l = parseFloat(field === 'length' ? value : next.length)
+        const w = parseFloat(field === 'width' ? value : next.width)
+        const h = parseFloat(field === 'height' ? value : next.height)
+        if (!isNaN(l) && !isNaN(w) && !isNaN(h)) {
+          next.cbm = String(Math.round(((l * w * h) / 1000000) * 10000) / 10000)
+        }
+      }
+
+      // Convenience: auto-fill Amount from CBM × Price per CBM
+      // whenever either changes — admin can still type over it.
+      if (['cbm', 'price_per_cbm', 'length', 'width', 'height'].includes(field)) {
         const cbm = parseFloat(field === 'cbm' ? value : next.cbm)
-        const price = parseFloat(field === 'price_per_cbm' ? value : next.price_per_cbm)
+        const price = parseFloat(next.price_per_cbm)
         if (!isNaN(cbm) && !isNaN(price)) next.amount = String(Math.round(cbm * price * 100) / 100)
       }
       return next
@@ -106,7 +141,7 @@ export default function AdminBatchDetail() {
     setSavingItem(true)
     setMessage('')
     try {
-      // Every batch's packing list is one header row that the items
+      // Every order's packing list is one header row that the items
       // hang off of. Create it the first time an item gets added.
       let listId = packingList?.id
       if (!listId) {
@@ -146,7 +181,7 @@ export default function AdminBatchDetail() {
 
   if (loading) {
     return (
-      <AppShell title="Batch">
+      <AppShell title="Order">
         <p className="text-sm text-steel">Loading…</p>
       </AppShell>
     )
@@ -155,7 +190,7 @@ export default function AdminBatchDetail() {
   if (!batch) {
     return (
       <AppShell title="Not found">
-        <p className="text-sm text-steel">No batch with this ID.</p>
+        <p className="text-sm text-steel">No order with this ID.</p>
       </AppShell>
     )
   }
@@ -164,14 +199,14 @@ export default function AdminBatchDetail() {
     <AppShell>
       <div className="flex items-start justify-between mb-2">
         <div>
-          <div className="font-mono text-xs text-steel uppercase tracking-wide mb-1">Batch</div>
+          <div className="font-mono text-xs text-steel uppercase tracking-wide mb-1">Order</div>
           <h1 className="font-display text-2xl font-semibold text-ink font-mono">{batch.batch_code}</h1>
           <div className="text-sm text-steel mt-1">
             {batch.profiles?.full_name} · {batch.profiles?.phone}
           </div>
           <div className="text-sm text-steel mt-1 flex gap-2">
-            {batch.service_type && <span className="capitalize">{batch.service_type.replace('_', ' ')}</span>}
-            {batch.route && <span>· {batch.route.replace('_', ' - ')}</span>}
+            {batch.service_type && <span>{formatServiceType(batch.service_type)}</span>}
+            {batch.route && <span>· {formatRoute(batch.route)}</span>}
           </div>
         </div>
         <select
@@ -181,7 +216,7 @@ export default function AdminBatchDetail() {
         >
           {BATCH_STATUSES.map((s) => (
             <option key={s} value={s}>
-              {s.replace('_', ' ')}
+              {BATCH_STATUS_LABELS[s]}
             </option>
           ))}
         </select>
@@ -198,37 +233,25 @@ export default function AdminBatchDetail() {
                 onChange={(e) => handleTrackingStatusChange(t.id, e.target.value)}
                 className="rounded-md border border-steel-line bg-white px-2.5 py-1 text-xs text-ink"
               >
-                {['pending', 'received', 'shipped', 'arrived_port', 'delivered'].map((s) => (
+                {TRACKING_STATUSES.map((s) => (
                   <option key={s} value={s}>
-                    {s.replace('_', ' ')}
+                    {TRACKING_STATUS_LABELS[s]}
                   </option>
                 ))}
               </select>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <label className="block">
-                <span className="block text-xs font-medium text-steel mb-1">Courier</span>
-                <input
-                  value={t.courier_name || ''}
-                  onChange={(e) => handleTrackingFieldChange(t.id, 'courier_name', e.target.value)}
-                  onBlur={(e) => handleTrackingFieldSave(t.id, 'courier_name', e.target.value)}
-                  placeholder="Not yet set"
-                  className="w-full rounded-md border border-steel-line bg-white px-3 py-1.5 text-sm text-ink focus:border-amber outline-none"
-                />
-              </label>
-              <label className="block">
-                <span className="block text-xs font-medium text-steel mb-1">Quantity</span>
-                <input
-                  type="number"
-                  min={1}
-                  value={t.quantity ?? ''}
-                  onChange={(e) => handleTrackingFieldChange(t.id, 'quantity', e.target.value)}
-                  onBlur={(e) => handleTrackingFieldSave(t.id, 'quantity', e.target.value)}
-                  placeholder="Not yet set"
-                  className="w-full rounded-md border border-steel-line bg-white px-3 py-1.5 text-sm text-ink focus:border-amber outline-none"
-                />
-              </label>
-            </div>
+            <label className="block max-w-[140px]">
+              <span className="block text-xs font-medium text-steel mb-1">Quantity</span>
+              <input
+                type="number"
+                min={1}
+                value={t.quantity ?? ''}
+                onChange={(e) => handleTrackingFieldChange(t.id, 'quantity', e.target.value)}
+                onBlur={(e) => handleTrackingFieldSave(t.id, 'quantity', e.target.value)}
+                placeholder="Not yet set"
+                className="w-full rounded-md border border-steel-line bg-white px-3 py-1.5 text-sm text-ink focus:border-amber outline-none"
+              />
+            </label>
           </div>
         ))}
       </div>
@@ -240,14 +263,6 @@ export default function AdminBatchDetail() {
             value={newWaybill.waybill_number}
             onChange={(e) => setNewWaybill((w) => ({ ...w, waybill_number: e.target.value }))}
             className="w-full rounded-md border border-steel-line bg-white px-3 py-2 text-sm font-mono"
-          />
-        </label>
-        <label className="flex-1 min-w-[140px]">
-          <span className="block text-xs font-medium text-ink mb-1">Courier</span>
-          <input
-            value={newWaybill.courier_name}
-            onChange={(e) => setNewWaybill((w) => ({ ...w, courier_name: e.target.value }))}
-            className="w-full rounded-md border border-steel-line bg-white px-3 py-2 text-sm"
           />
         </label>
         <label className="w-20">
@@ -275,7 +290,7 @@ export default function AdminBatchDetail() {
                 <th className="px-4 py-3 font-medium">Qty</th>
                 <th className="px-4 py-3 font-medium">Weight (kg)</th>
                 <th className="px-4 py-3 font-medium">CBM</th>
-                <th className="px-4 py-3 font-medium">Price/CBM</th>
+                <th className="px-4 py-3 font-medium">Price per CBM</th>
                 <th className="px-4 py-3 font-medium">Amount ($)</th>
                 <th className="px-4 py-3 font-medium">Notes</th>
                 <th className="px-4 py-3"></th>
@@ -305,73 +320,128 @@ export default function AdminBatchDetail() {
         </div>
       )}
 
-      <form onSubmit={handleAddItem} className="manifest-card p-4 flex flex-wrap gap-3 items-end">
-        <label className="w-20">
-          <span className="block text-xs font-medium text-ink mb-1">Qty</span>
-          <input
-            type="number"
-            min={1}
-            value={newItem.quantity}
-            onChange={(e) => updateNewItemField('quantity', e.target.value)}
-            className="w-full rounded-md border border-steel-line bg-white px-3 py-2 text-sm"
-          />
-        </label>
-        <label className="w-28">
-          <span className="block text-xs font-medium text-ink mb-1">Weight (kg)</span>
-          <input
-            type="number"
-            step="0.01"
-            value={newItem.weight}
-            onChange={(e) => updateNewItemField('weight', e.target.value)}
-            className="w-full rounded-md border border-steel-line bg-white px-3 py-2 text-sm"
-          />
-        </label>
-        <label className="w-24">
-          <span className="block text-xs font-medium text-ink mb-1">CBM</span>
-          <input
-            type="number"
-            step="0.01"
-            value={newItem.cbm}
-            onChange={(e) => updateNewItemField('cbm', e.target.value)}
-            className="w-full rounded-md border border-steel-line bg-white px-3 py-2 text-sm"
-          />
-        </label>
-        <label className="w-28">
-          <span className="block text-xs font-medium text-ink mb-1">Price/CBM</span>
-          <input
-            type="number"
-            step="0.01"
-            value={newItem.price_per_cbm}
-            onChange={(e) => updateNewItemField('price_per_cbm', e.target.value)}
-            className="w-full rounded-md border border-steel-line bg-white px-3 py-2 text-sm"
-          />
-        </label>
-        <label className="w-28">
-          <span className="block text-xs font-medium text-ink mb-1">Amount ($)</span>
-          <input
-            type="number"
-            step="0.01"
-            value={newItem.amount}
-            onChange={(e) => updateNewItemField('amount', e.target.value)}
-            className="w-full rounded-md border border-steel-line bg-white px-3 py-2 text-sm"
-          />
-        </label>
-        <label className="flex-1 min-w-[160px]">
-          <span className="block text-xs font-medium text-ink mb-1">Notes</span>
-          <input
-            value={newItem.notes}
-            onChange={(e) => updateNewItemField('notes', e.target.value)}
-            className="w-full rounded-md border border-steel-line bg-white px-3 py-2 text-sm"
-            placeholder="Optional"
-          />
-        </label>
+      <form onSubmit={handleAddItem} className="manifest-card p-4">
         <button
-          type="submit"
-          disabled={savingItem}
-          className="text-sm font-medium text-white bg-cargo rounded-md px-4 py-2 hover:opacity-90 disabled:opacity-50"
+          type="button"
+          onClick={() => setUseDimensions((u) => !u)}
+          className="text-xs font-medium text-amber hover:text-ink mb-3"
         >
-          {savingItem ? 'Adding…' : '+ Add item'}
+          {useDimensions ? 'Enter CBM directly instead' : 'Calculate CBM from dimensions instead'}
         </button>
+
+        <div className="flex flex-wrap gap-3 items-end">
+          <label className="w-20">
+            <span className="block text-xs font-medium text-ink mb-1">Qty</span>
+            <input
+              type="number"
+              min={1}
+              value={newItem.quantity}
+              onChange={(e) => updateNewItemField('quantity', e.target.value)}
+              className="w-full rounded-md border border-steel-line bg-white px-3 py-2 text-sm"
+            />
+          </label>
+          <label className="w-28">
+            <span className="block text-xs font-medium text-ink mb-1">Weight (kg)</span>
+            <input
+              type="number"
+              step="0.01"
+              value={newItem.weight}
+              onChange={(e) => updateNewItemField('weight', e.target.value)}
+              className="w-full rounded-md border border-steel-line bg-white px-3 py-2 text-sm"
+            />
+          </label>
+
+          {useDimensions ? (
+            <>
+              <label className="w-24">
+                <span className="block text-xs font-medium text-ink mb-1">Length (cm)</span>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={newItem.length}
+                  onChange={(e) => updateNewItemField('length', e.target.value)}
+                  className="w-full rounded-md border border-steel-line bg-white px-3 py-2 text-sm"
+                />
+              </label>
+              <label className="w-24">
+                <span className="block text-xs font-medium text-ink mb-1">Width (cm)</span>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={newItem.width}
+                  onChange={(e) => updateNewItemField('width', e.target.value)}
+                  className="w-full rounded-md border border-steel-line bg-white px-3 py-2 text-sm"
+                />
+              </label>
+              <label className="w-24">
+                <span className="block text-xs font-medium text-ink mb-1">Height (cm)</span>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={newItem.height}
+                  onChange={(e) => updateNewItemField('height', e.target.value)}
+                  className="w-full rounded-md border border-steel-line bg-white px-3 py-2 text-sm"
+                />
+              </label>
+              <label className="w-24">
+                <span className="block text-xs font-medium text-ink mb-1">CBM (auto)</span>
+                <input
+                  readOnly
+                  value={newItem.cbm}
+                  className="w-full rounded-md border border-steel-line bg-paper-dim px-3 py-2 text-sm text-steel"
+                />
+              </label>
+            </>
+          ) : (
+            <label className="w-24">
+              <span className="block text-xs font-medium text-ink mb-1">CBM</span>
+              <input
+                type="number"
+                step="0.01"
+                value={newItem.cbm}
+                onChange={(e) => updateNewItemField('cbm', e.target.value)}
+                className="w-full rounded-md border border-steel-line bg-white px-3 py-2 text-sm"
+              />
+            </label>
+          )}
+
+          <label className="w-28">
+            <span className="block text-xs font-medium text-ink mb-1">Price per CBM</span>
+            <input
+              type="number"
+              step="0.01"
+              value={newItem.price_per_cbm}
+              onChange={(e) => updateNewItemField('price_per_cbm', e.target.value)}
+              className="w-full rounded-md border border-steel-line bg-white px-3 py-2 text-sm"
+            />
+          </label>
+          <label className="w-28">
+            <span className="block text-xs font-medium text-ink mb-1">Amount ($)</span>
+            <input
+              type="number"
+              step="0.01"
+              value={newItem.amount}
+              onChange={(e) => updateNewItemField('amount', e.target.value)}
+              className="w-full rounded-md border border-steel-line bg-white px-3 py-2 text-sm"
+            />
+          </label>
+          <label className="flex-1 min-w-[160px]">
+            <span className="block text-xs font-medium text-ink mb-1">Notes</span>
+            <input
+              value={newItem.notes}
+              onChange={(e) => updateNewItemField('notes', e.target.value)}
+              className="w-full rounded-md border border-steel-line bg-white px-3 py-2 text-sm"
+              placeholder="Optional"
+            />
+          </label>
+          <button
+            type="submit"
+            disabled={savingItem}
+            className="text-sm font-medium text-white bg-cargo rounded-md px-4 py-2 hover:opacity-90 disabled:opacity-50"
+          >
+            {savingItem ? 'Adding…' : '+ Add item'}
+          </button>
+        </div>
       </form>
       {message && <p className="text-sm text-alert mt-2">{message}</p>}
     </AppShell>

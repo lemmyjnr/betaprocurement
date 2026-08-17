@@ -5,6 +5,7 @@ import { RequireAuth, RequireAdmin, RequireOwner } from './components/ProtectedR
 import Login from './pages/Login'
 import SignUp from './pages/SignUp'
 import StaffInvite from './pages/StaffInvite'
+import PublicTrack from './pages/PublicTrack'
 import Dashboard from './pages/Dashboard'
 import BatchList from './pages/BatchList'
 import NewBatch from './pages/NewBatch'
@@ -27,6 +28,7 @@ export default function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<SignUp />} />
           <Route path="/staff-invite/:inviteId" element={<StaffInvite />} />
+          <Route path="/track" element={<PublicTrack />} />
 
           <Route path="/" element={<RequireAuth><Dashboard /></RequireAuth>} />
           <Route path="/batches" element={<RequireAuth><BatchList /></RequireAuth>} />

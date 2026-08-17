@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import AppShell from '../components/AppShell'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
+import { SERVICE_TYPES, SERVICE_TYPE_LABELS, ROUTES, ROUTE_LABELS } from '../lib/labels'
 
 const emptyWaybill = () => ({ waybill_number: '' })
 
@@ -20,6 +21,9 @@ export default function NewBatch() {
   const [waybills, setWaybills] = useState([emptyWaybill()])
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+
+  const [showPaste, setShowPaste] = useState(false)
+  const [pasteText, setPasteText] = useState('')
 
   // The session's user id is available the instant someone's logged
   // in, the profile row can take a moment longer to fetch. Prefer
@@ -40,6 +44,22 @@ export default function NewBatch() {
     setWaybills((rows) => rows.filter((_, i) => i !== index))
   }
 
+  // Splits on newlines OR commas, trims each one, drops blanks and
+  // exact duplicates, then replaces the current list of rows —
+  // meant for someone with a long list of waybills to add at once
+  // instead of typing them in one by one.
+  function applyPastedList() {
+    const numbers = pasteText
+      .split(/[\n,]/)
+      .map((s) => s.trim())
+      .filter(Boolean)
+    const unique = [...new Set(numbers)]
+    if (unique.length === 0) return
+    setWaybills(unique.map((waybill_number) => ({ waybill_number })))
+    setPasteText('')
+    setShowPaste(false)
+  }
+
   async function handleSubmit(e) {
     e.preventDefault()
     setError('')
@@ -56,8 +76,8 @@ export default function NewBatch() {
 
     setLoading(true)
     try {
-      // This batch code is what keeps this upload from ever mixing
-      // with a previous one — every batch, however many waybills it
+      // This order code is what keeps this upload from ever mixing
+      // with a previous one — every order, however many waybills it
       // holds, gets exactly one code.
       const { data: batch, error: batchError } = await supabase
         .from('batches')
@@ -81,7 +101,7 @@ export default function NewBatch() {
 
       navigate(`/batches/${batch.id}`)
     } catch (err) {
-      setError(err.message || 'Could not submit this batch. Try again.')
+      setError(err.message || 'Could not submit this order. Try again.')
     } finally {
       setLoading(false)
     }
@@ -91,7 +111,7 @@ export default function NewBatch() {
     <AppShell title="Upload tracking numbers">
       <p className="text-sm text-steel mb-6 max-w-xl">
         Add each waybill as a separate entry so it can be tracked individually. Everything you add here becomes
-        one batch, so future uploads never get mixed in with this one.
+        one order, so future uploads never get mixed in with this one.
       </p>
 
       <form onSubmit={handleSubmit} className="max-w-xl">
@@ -103,9 +123,11 @@ export default function NewBatch() {
               onChange={(e) => setServiceType(e.target.value)}
               className="w-full rounded-md border border-steel-line bg-white px-3.5 py-2.5 text-sm text-ink focus:border-amber outline-none"
             >
-              <option value="sea_freight">Sea Freight</option>
-              <option value="air_freight">Air Freight</option>
-              <option value="express">Express</option>
+              {SERVICE_TYPES.map((st) => (
+                <option key={st} value={st}>
+                  {SERVICE_TYPE_LABELS[st]}
+                </option>
+              ))}
             </select>
           </label>
           <label className="block">
@@ -115,11 +137,49 @@ export default function NewBatch() {
               onChange={(e) => setRoute(e.target.value)}
               className="w-full rounded-md border border-steel-line bg-white px-3.5 py-2.5 text-sm text-ink focus:border-amber outline-none"
             >
-              <option value="china_nigeria">China - Nigeria</option>
-              <option value="dubai_nigeria">Dubai - Nigeria</option>
+              {ROUTES.map((r) => (
+                <option key={r} value={r}>
+                  {ROUTE_LABELS[r]}
+                </option>
+              ))}
             </select>
           </label>
         </div>
+
+        <div className="mb-4">
+          <button
+            type="button"
+            onClick={() => setShowPaste((s) => !s)}
+            className="text-sm font-medium text-amber hover:text-ink"
+          >
+            {showPaste ? 'Cancel pasting a list' : 'Have a lot of waybills? Paste a list instead'}
+          </button>
+        </div>
+
+        {showPaste && (
+          <div className="manifest-card p-4 mb-6">
+            <label className="block mb-3">
+              <span className="block text-sm font-medium text-ink mb-1.5">
+                Paste waybill numbers, one per line (or separated by commas)
+              </span>
+              <textarea
+                value={pasteText}
+                onChange={(e) => setPasteText(e.target.value)}
+                rows={6}
+                className="w-full rounded-md border border-steel-line bg-white px-3.5 py-2.5 text-sm font-mono text-ink focus:border-amber outline-none"
+                placeholder={'71009618\n71009619\n71009620'}
+              />
+            </label>
+            <button
+              type="button"
+              onClick={applyPastedList}
+              className="text-sm font-medium text-white bg-ink rounded-md px-4 py-2 hover:bg-ink-soft transition-colors"
+            >
+              Use this list
+            </button>
+            <p className="text-xs text-steel mt-2">This replaces the waybills below with what you paste here.</p>
+          </div>
+        )}
 
         <div className="space-y-4">
           {waybills.map((w, i) => (
@@ -166,7 +226,7 @@ export default function NewBatch() {
           disabled={loading}
           className="mt-6 w-full rounded-md bg-cargo text-white font-medium text-sm py-2.5 hover:opacity-90 transition-opacity disabled:opacity-50"
         >
-          {loading ? 'Submitting…' : 'Submit batch'}
+          {loading ? 'Submitting…' : 'Submit order'}
         </button>
       </form>
     </AppShell>

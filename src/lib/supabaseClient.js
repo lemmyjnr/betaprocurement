@@ -10,4 +10,30 @@ if (!supabaseUrl || !supabaseAnonKey) {
   )
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+// "Remember me" on the login page: when checked (the default),
+// sessions persist in localStorage — survives closing the browser,
+// same as most sites. When unchecked, we use sessionStorage instead,
+// so the session disappears once the tab/browser is closed. Login.jsx
+// sets this flag right before calling signIn(); everything else here
+// just reads it on every storage operation, since Supabase's own
+// client is only ever created once.
+const REMEMBER_KEY = 'sb-remember-me'
+
+const authStorage = {
+  getItem: (key) => {
+    const remember = localStorage.getItem(REMEMBER_KEY) !== 'false'
+    return (remember ? localStorage : sessionStorage).getItem(key)
+  },
+  setItem: (key, value) => {
+    const remember = localStorage.getItem(REMEMBER_KEY) !== 'false'
+    ;(remember ? localStorage : sessionStorage).setItem(key, value)
+  },
+  removeItem: (key) => {
+    localStorage.removeItem(key)
+    sessionStorage.removeItem(key)
+  },
+}
+
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: { storage: authStorage },
+})

@@ -4,6 +4,7 @@ import AppShell from '../components/AppShell'
 import StatusStamp from '../components/StatusStamp'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
+import { formatServiceType, formatRoute } from '../lib/labels'
 
 export default function BatchList() {
   const { profile } = useAuth()
@@ -24,7 +25,7 @@ export default function BatchList() {
   }, [profile])
 
   return (
-    <AppShell title="My batches">
+    <AppShell title="My orders">
       {loading ? (
         <p className="text-sm text-steel">Loading…</p>
       ) : batches.length === 0 ? (
@@ -46,8 +47,8 @@ export default function BatchList() {
                 <div className="font-mono text-sm text-ink">{b.batch_code}</div>
                 <div className="text-xs text-steel mt-0.5 flex gap-2">
                   <span>{b.tracking_numbers?.[0]?.count ?? 0} tracking number(s)</span>
-                  {b.service_type && <span>· {b.service_type.replace('_', ' ')}</span>}
-                  {b.route && <span>· {b.route.replace('_', ' - ')}</span>}
+                  {b.service_type && <span>· {formatServiceType(b.service_type)}</span>}
+                  {b.route && <span>· {formatRoute(b.route)}</span>}
                 </div>
               </div>
               <StatusStamp status={b.status} />

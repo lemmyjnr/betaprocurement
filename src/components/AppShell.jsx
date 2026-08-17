@@ -46,7 +46,7 @@ export default function AppShell({ children, title }) {
                 Overview
               </NavItem>
               <NavItem to="/admin/customers">Customers</NavItem>
-              <NavItem to="/admin/batches">All batches</NavItem>
+              <NavItem to="/admin/batches">All orders</NavItem>
               <NavItem to="/admin/packing-lists">Packing lists</NavItem>
               {isOwner && <NavItem to="/admin/staff">Staff</NavItem>}
             </>
@@ -55,7 +55,7 @@ export default function AppShell({ children, title }) {
               <NavItem to="/" end>
                 Dashboard
               </NavItem>
-              <NavItem to="/batches">My batches</NavItem>
+              <NavItem to="/batches">My orders</NavItem>
               <NavItem to="/batches/new">Upload tracking numbers</NavItem>
               <NavItem to="/packing-lists">Packing lists</NavItem>
             </>

@@ -57,7 +57,7 @@ begin
       'Content-Type', 'application/json'
     ),
     body := jsonb_build_object(
-      'from', 'Beta Procurement <updates@resend.dev>', -- swap for your own verified domain once you have one, see README
+      'from', 'Beta Logistics <onboarding@resend.dev>', -- swap for your own verified domain once you have one, see README
       'to', customer_email,
       'subject', 'Your batch ' || new.batch_code || ' is now ' || status_label,
       'html', '<p>Hi ' || coalesce(customer_name, 'there') || ',</p>' ||

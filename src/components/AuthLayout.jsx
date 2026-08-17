@@ -32,7 +32,7 @@ export default function AuthLayout({ eyebrow, title, subtitle, children }) {
         </div>
 
         <p className="text-sm text-paper/70 mb-2 leading-relaxed max-w-sm">
-          Every batch you upload gets its own reference code, so nothing
+          Every order you upload gets its own reference code, so nothing
           from a past shipment ever mixes with a new one.
         </p>
 

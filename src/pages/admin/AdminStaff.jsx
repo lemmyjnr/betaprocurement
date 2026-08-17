@@ -87,7 +87,7 @@ export default function AdminStaff() {
     <AppShell title="Staff">
       <p className="text-sm text-steel mb-6 max-w-lg">
         Generate a link and send it to whoever you want on the admin side — they'll set their own password
-        through it. Anyone with admin access can see everything: customers, batches, and packing lists, so
+        through it. Anyone with admin access can see everything: customers, orders, and packing lists, so
         only send this to people you trust with that.
       </p>
 

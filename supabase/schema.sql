@@ -35,7 +35,7 @@ create table if not exists batches (
   batch_code text unique not null,
   customer_id uuid not null references profiles(id) on delete cascade,
   created_by uuid not null references profiles(id),
-  service_type text check (service_type in ('air_cargo', 'sea_shipping')),
+  service_type text check (service_type in ('sea_freight', 'air_freight', 'express')),
   route text check (route in ('china_nigeria', 'dubai_nigeria')),
   status text not null default 'submitted' check (
     status in ('submitted', 'received', 'in_transit', 'arrived_port', 'clearing', 'delivered')
@@ -45,15 +45,18 @@ create table if not exists batches (
 
 -- Each waybill/tracking number a customer adds, always tied to
 -- exactly one batch so uploads never bleed into each other.
+-- One row per waybill/tracking number a customer adds. Customers only
+-- ever submit the waybill number itself — courier gets removed from
+-- the app entirely, and quantity is filled in by admin once the item
+-- is actually received (see AdminBatchDetail.jsx). Status here is
+-- deliberately just pending/received — the fuller lifecycle
+-- (shipped, arrived at port, delivered) lives at the batch level.
 create table if not exists tracking_numbers (
   id uuid primary key default gen_random_uuid(),
   batch_id uuid not null references batches(id) on delete cascade,
   waybill_number text not null,
-  courier_name text not null,
-  quantity integer not null default 1,
-  status text not null default 'pending' check (
-    status in ('pending', 'received', 'shipped', 'arrived_port', 'delivered')
-  ),
+  quantity integer,
+  status text not null default 'pending' check (status in ('pending', 'received')),
   created_at timestamptz not null default now()
 );
 
@@ -68,16 +71,19 @@ create table if not exists packing_lists (
   created_at timestamptz not null default now()
 );
 
--- One row per item on the packing list: what it is, how many,
--- how much it weighs. This is what renders as a table in the app
--- and what gets turned into a CSV on download.
+-- One row per line on the packing list, freight-invoice style: how
+-- many, how much it weighs (always kg), how much space it takes up
+-- (CBM), and what that space costs. `amount` is auto-calculated in
+-- the app as CBM × price_per_cbm when a row is added, so it's never
+-- out of sync with the other two numbers — see AdminBatchDetail.jsx.
 create table if not exists packing_list_items (
   id uuid primary key default gen_random_uuid(),
   packing_list_id uuid not null references packing_lists(id) on delete cascade,
-  item_name text not null,
   quantity integer not null default 1,
   weight numeric,
-  weight_unit text not null default 'kg' check (weight_unit in ('kg', 'lb')),
+  cbm numeric,
+  price_per_cbm numeric,
+  amount numeric,
   notes text,
   created_at timestamptz not null default now()
 );
@@ -357,3 +363,89 @@ end;
 $$ language plpgsql security definer set search_path = public;
 
 grant execute on function remove_admin(uuid) to authenticated;
+
+-- ============================================================
+-- Email notifications — fires automatically whenever a batch's
+-- status changes. See supabase/migrations/006_email_notifications.sql
+-- for the full explanation and setup steps (Resend API key, etc.)
+-- ============================================================
+
+create extension if not exists pg_net;
+
+create or replace function notify_batch_status_change()
+returns trigger as $$
+declare
+  customer_email text;
+  customer_name text;
+  api_key text;
+  status_label text;
+begin
+  if new.status is not distinct from old.status then
+    return new;
+  end if;
+
+  select email, full_name into customer_email, customer_name
+  from profiles where id = new.customer_id;
+
+  if customer_email is null then
+    return new;
+  end if;
+
+  select decrypted_secret into api_key
+  from vault.decrypted_secrets where name = 'resend_api_key';
+
+  if api_key is null then
+    return new;
+  end if;
+
+  status_label := replace(new.status, '_', ' ');
+
+  perform net.http_post(
+    url := 'https://api.resend.com/emails',
+    headers := jsonb_build_object(
+      'Authorization', 'Bearer ' || api_key,
+      'Content-Type', 'application/json'
+    ),
+    body := jsonb_build_object(
+      'from', 'Beta Logistics <onboarding@resend.dev>', -- swap for your own verified domain once you have one, see README
+      'to', customer_email,
+      'subject', 'Your batch ' || new.batch_code || ' is now ' || status_label,
+      'html', '<p>Hi ' || coalesce(customer_name, 'there') || ',</p>' ||
+              '<p>Your batch <strong>' || new.batch_code || '</strong> is now <strong>' || status_label || '</strong>.</p>' ||
+              '<p>Log in to your account to see full details.</p>'
+    )
+  );
+
+  return new;
+end;
+$$ language plpgsql security definer set search_path = public, vault, net;
+
+drop trigger if exists on_batch_status_change on batches;
+create trigger on_batch_status_change
+  after update on batches
+  for each row
+  execute function notify_batch_status_change();
+
+-- ============================================================
+-- Public tracking lookup — no login required. Deliberately returns
+-- only the minimum: waybill number, its own status, the batch's
+-- status, and what kind of shipment it is. No customer name, phone,
+-- or packing list contents — safe to share or forward.
+-- ============================================================
+
+create or replace function public_track_waybill(lookup text)
+returns table (
+  waybill_number text,
+  tracking_status text,
+  batch_status text,
+  service_type text,
+  route text
+) as $$
+  select t.waybill_number, t.status, b.status, b.service_type, b.route
+  from tracking_numbers t
+  join batches b on b.id = t.batch_id
+  where t.waybill_number = trim(lookup)
+  limit 1
+$$ language sql security definer set search_path = public;
+
+grant execute on function public_track_waybill(text) to anon, authenticated;

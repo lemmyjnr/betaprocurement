@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import AppShell from '../../components/AppShell'
 import StatusStamp from '../../components/StatusStamp'
 import { supabase } from '../../lib/supabaseClient'
+import { formatServiceType, formatRoute } from '../../lib/labels'
 
 function EmailEditor({ customer, onSaved }) {
   const [email, setEmail] = useState(customer?.email || '')
@@ -84,9 +85,9 @@ export default function AdminCustomerDetail() {
         />
       </div>
 
-      <h2 className="font-display text-lg font-semibold text-ink mb-3">Batches</h2>
+      <h2 className="font-display text-lg font-semibold text-ink mb-3">Orders</h2>
       {batches.length === 0 ? (
-        <p className="text-sm text-steel">No batches yet.</p>
+        <p className="text-sm text-steel">No orders yet.</p>
       ) : (
         <div className="space-y-2">
           {batches.map((b) => (
@@ -96,7 +97,13 @@ export default function AdminCustomerDetail() {
               className="manifest-card p-4 flex items-center justify-between hover:border-amber transition-colors"
             >
               <span className="font-mono text-sm text-ink">{b.batch_code}</span>
-              <StatusStamp status={b.status} />
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-steel">
+                  {b.service_type && formatServiceType(b.service_type)}
+                  {b.route && ` · ${formatRoute(b.route)}`}
+                </span>
+                <StatusStamp status={b.status} />
+              </div>
             </Link>
           ))}
         </div>

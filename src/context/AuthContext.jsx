@@ -56,21 +56,36 @@ export function AuthProvider({ children }) {
       else setLoading(false)
     })
 
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
       setSession(session)
-      if (session?.user) loadProfile(session.user.id)
-      else setProfile(null)
+      if (session?.user) {
+        if (event === 'SIGNED_IN') {
+          // A real, fresh sign-in — hold `loading` true until the
+          // profile catches up, so pages gated on session can't
+          // render (and let someone act) before we know who they
+          // are. See ProtectedRoute.jsx.
+          setLoading(true)
+          loadProfile(session.user.id).finally(() => setLoading(false))
+        } else {
+          // Anything else with a session (e.g. Supabase's automatic
+          // background token refresh) — just quietly refresh the
+          // profile without flashing a loading screen over the app.
+          loadProfile(session.user.id)
+        }
+      } else {
+        setProfile(null)
+      }
     })
 
     return () => listener.subscription.unsubscribe()
   }, [])
 
-  // `email` is optional. If the customer gives one, it becomes their
-  // real Supabase auth identity (so they can log in with it, and it
-  // unlocks things like password-reset emails later). If they leave
-  // it blank, we fall back to the phone-as-email trick, same as before.
-  // Either way, we save the exact auth email we used in `auth_email`,
-  // so login can always find it again later — see resolveAuthEmail.
+  // Email is required on the sign-up form now (it's needed for shipment
+  // status emails), but this function itself still works if a caller
+  // ever passes an empty one (e.g. an old admin-created account) — it
+  // falls back to the phone-as-email trick either way. Either way, we
+  // save the exact auth email we used in `auth_email`, so login can
+  // always find it again later — see resolveAuthEmail.
   async function signUp({ fullName, shippingName, phone, email, password }) {
     const trimmedEmail = email?.trim().toLowerCase()
     const authEmail = trimmedEmail ? trimmedEmail : phoneToAuthEmail(phone)

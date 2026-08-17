@@ -9,6 +9,7 @@ export default function Login() {
   const { signIn } = useAuth()
   const navigate = useNavigate()
   const [form, setForm] = useState({ identifier: '', password: '' })
+  const [rememberMe, setRememberMe] = useState(true)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const adminHost = isAdminHost()
@@ -22,6 +23,9 @@ export default function Login() {
     setError('')
     setLoading(true)
     try {
+      // Has to be set before signIn() — the Supabase client reads this
+      // flag every time it stores the session. See supabaseClient.js.
+      localStorage.setItem('sb-remember-me', rememberMe ? 'true' : 'false')
       await signIn(form)
       // If this isn't actually a staff member, RequireAdmin sends them
       // straight back to the customer dashboard — see ProtectedRoute.jsx.
@@ -69,6 +73,16 @@ export default function Login() {
 
         {error && <p className="text-sm text-alert mb-4">{error}</p>}
 
+        <label className="flex items-center gap-2 mb-5 text-sm text-steel cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={rememberMe}
+            onChange={(e) => setRememberMe(e.target.checked)}
+            className="rounded border-steel-line"
+          />
+          Remember me on this device
+        </label>
+
         <PrimaryButton type="submit" loading={loading}>
           Log in
         </PrimaryButton>
@@ -79,6 +93,13 @@ export default function Login() {
           New here?{' '}
           <Link to="/signup" className="text-ink font-medium hover:text-amber">
             Create an account
+          </Link>
+        </p>
+      )}
+      {!adminHost && (
+        <p className="text-xs text-steel mt-3 text-center">
+          <Link to="/track" className="hover:text-amber">
+            Track a shipment without logging in
           </Link>
         </p>
       )}
