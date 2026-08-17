@@ -199,7 +199,7 @@ create policy "edit tracking numbers while batch is editable"
       select 1 from batches
       where batches.id = tracking_numbers.batch_id
       and (
-        (batches.customer_id = auth.uid() and batches.status in ('submitted', 'received'))
+        (batches.customer_id = auth.uid() and batches.status in ('submitted', 'received') and tracking_numbers.status = 'pending')
         or is_admin()
       )
     )
@@ -212,7 +212,7 @@ create policy "remove tracking numbers while batch is editable"
       select 1 from batches
       where batches.id = tracking_numbers.batch_id
       and (
-        (batches.customer_id = auth.uid() and batches.status in ('submitted', 'received'))
+        (batches.customer_id = auth.uid() and batches.status in ('submitted', 'received') and tracking_numbers.status = 'pending')
         or is_admin()
       )
     )

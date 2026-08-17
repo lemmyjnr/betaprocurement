@@ -16,6 +16,7 @@ import Account from './pages/Account'
 import AdminOverview from './pages/admin/AdminOverview'
 import AdminCustomers from './pages/admin/AdminCustomers'
 import AdminCustomerDetail from './pages/admin/AdminCustomerDetail'
+import AdminNewBatch from './pages/admin/AdminNewBatch'
 import AdminBatches from './pages/admin/AdminBatches'
 import AdminBatchDetail from './pages/admin/AdminBatchDetail'
 import AdminStaff from './pages/admin/AdminStaff'
@@ -40,6 +41,7 @@ export default function App() {
           <Route path="/admin" element={<RequireAdmin><AdminOverview /></RequireAdmin>} />
           <Route path="/admin/customers" element={<RequireAdmin><AdminCustomers /></RequireAdmin>} />
           <Route path="/admin/customers/:id" element={<RequireAdmin><AdminCustomerDetail /></RequireAdmin>} />
+          <Route path="/admin/customers/:customerId/new-order" element={<RequireAdmin><AdminNewBatch /></RequireAdmin>} />
           <Route path="/admin/batches" element={<RequireAdmin><AdminBatches /></RequireAdmin>} />
           <Route path="/admin/batches/:id" element={<RequireAdmin><AdminBatchDetail /></RequireAdmin>} />
           <Route path="/admin/packing-lists" element={<RequireAdmin><AdminBatches /></RequireAdmin>} />

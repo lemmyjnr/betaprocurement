@@ -8,15 +8,15 @@ import { formatServiceType, formatRoute } from '../lib/labels'
 
 // An order stays editable by the customer up through "received" —
 // once it's in_transit (shipped) or further along, only admin can
-// change it.
+// change anything on it, full stop.
 const EDITABLE_STATUSES = ['submitted', 'received']
 
-// Packing lists only apply to sea freight — hidden entirely for
-// air freight / express on the customer side. Admin still manages
-// packing lists regardless of service type.
-const PACKING_LIST_SERVICE_TYPE = 'sea_freight'
+// Even while the order overall is open, a waybill locks the moment
+// ITS OWN status flips to "received" — only the still-pending ones
+// can be edited or removed.
+const isRowEditable = (t) => t.status === 'pending'
 
-const emptyWaybill = () => ({ id: null, waybill_number: '' })
+const PACKING_LIST_SERVICE_TYPE = 'sea_freight'
 
 export default function BatchDetail() {
   const { id } = useParams()
@@ -25,10 +25,15 @@ export default function BatchDetail() {
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
 
-  const [isEditing, setIsEditing] = useState(false)
-  const [rows, setRows] = useState([])
-  const [saving, setSaving] = useState(false)
-  const [saveError, setSaveError] = useState('')
+  const [editingId, setEditingId] = useState(null)
+  const [editValue, setEditValue] = useState('')
+  const [savingId, setSavingId] = useState(null)
+  const [rowError, setRowError] = useState('')
+
+  const [addingNew, setAddingNew] = useState(false)
+  const [newWaybill, setNewWaybill] = useState('')
+  const [addError, setAddError] = useState('')
+  const [adding, setAdding] = useState(false)
 
   async function load() {
     const [{ data: b }, { data: t }, { data: pl }] = await Promise.all([
@@ -52,79 +57,60 @@ export default function BatchDetail() {
     load()
   }, [id])
 
-  const editable = batch && EDITABLE_STATUSES.includes(batch.status)
+  const orderEditable = batch && EDITABLE_STATUSES.includes(batch.status)
   const showPackingList = batch?.service_type === PACKING_LIST_SERVICE_TYPE
 
-  function startEditing() {
-    setRows(
-      tracking.map((t) => ({
-        id: t.id,
-        waybill_number: t.waybill_number,
-      }))
-    )
-    setSaveError('')
-    setIsEditing(true)
+  function startEdit(t) {
+    setEditingId(t.id)
+    setEditValue(t.waybill_number)
+    setRowError('')
   }
 
-  function updateRow(index, field, value) {
-    setRows((rs) => rs.map((r, i) => (i === index ? { ...r, [field]: value } : r)))
-  }
-
-  function addRow() {
-    setRows((rs) => [...rs, emptyWaybill()])
-  }
-
-  function removeRow(index) {
-    setRows((rs) => rs.filter((_, i) => i !== index))
-  }
-
-  async function handleSave() {
-    setSaveError('')
-    const validRows = rows.filter((r) => r.waybill_number.trim())
-    if (validRows.length === 0) {
-      setSaveError('An order needs at least one waybill. Remove the whole order instead if you no longer need it.')
+  async function saveEdit(trackingId) {
+    if (!editValue.trim()) {
+      setRowError('Waybill number can\u2019t be empty.')
       return
     }
-
-    setSaving(true)
-    try {
-      const existingIds = new Set(tracking.map((t) => t.id))
-      const keptIds = new Set(validRows.filter((r) => r.id).map((r) => r.id))
-      const removedIds = [...existingIds].filter((tid) => !keptIds.has(tid))
-
-      const updates = validRows
-        .filter((r) => r.id)
-        .map((r) =>
-          supabase
-            .from('tracking_numbers')
-            .update({
-              waybill_number: r.waybill_number.trim(),
-            })
-            .eq('id', r.id)
-        )
-
-      const newRows = validRows
-        .filter((r) => !r.id)
-        .map((r) => ({
-          batch_id: id,
-          waybill_number: r.waybill_number.trim(),
-        }))
-
-      const ops = [...updates]
-      if (newRows.length > 0) ops.push(supabase.from('tracking_numbers').insert(newRows))
-      if (removedIds.length > 0) ops.push(supabase.from('tracking_numbers').delete().in('id', removedIds))
-
-      const results = await Promise.all(ops)
-      const failed = results.find((r) => r.error)
-      if (failed) throw failed.error
-
-      setIsEditing(false)
-      await load()
-    } catch (err) {
-      setSaveError(err.message || 'Could not save these changes. Try again.')
-    } finally {
-      setSaving(false)
+    setSavingId(trackingId)
+    const { error } = await supabase
+      .from('tracking_numbers')
+      .update({ waybill_number: editValue.trim() })
+      .eq('id', trackingId)
+    setSavingId(null)
+    if (error) {
+      setRowError(error.message)
+      return
     }
+    setEditingId(null)
+    await load()
+  }
+
+  async function removeRow(trackingId) {
+    setSavingId(trackingId)
+    await supabase.from('tracking_numbers').delete().eq('id', trackingId)
+    setSavingId(null)
+    await load()
+  }
+
+  async function handleAddWaybill(e) {
+    e.preventDefault()
+    setAddError('')
+    if (!newWaybill.trim()) {
+      setAddError('Enter a waybill number.')
+      return
+    }
+    setAdding(true)
+    const { error } = await supabase
+      .from('tracking_numbers')
+      .insert({ batch_id: id, waybill_number: newWaybill.trim() })
+    setAdding(false)
+    if (error) {
+      setAddError(error.message)
+      return
+    }
+    setNewWaybill('')
+    setAddingNew(false)
+    await load()
   }
 
   if (loading) {
@@ -157,92 +143,124 @@ export default function BatchDetail() {
         <StatusStamp status={batch.status} />
       </div>
 
-      <div className="flex items-center justify-between mb-3">
-        <h2 className="font-display text-lg font-semibold text-ink">Tracking numbers</h2>
-        {editable && !isEditing && (
-          <button onClick={startEditing} className="text-sm font-medium text-amber hover:text-ink">
-            Edit
-          </button>
-        )}
-      </div>
+      <h2 className="font-display text-lg font-semibold text-ink mb-3">Tracking numbers</h2>
 
-      {!editable && (
+      {!orderEditable && (
         <p className="text-xs text-steel mb-3">
           This order has shipped, so it&rsquo;s locked on your end — reach out to us if something needs to change.
         </p>
       )}
 
-      {isEditing ? (
-        <div className="mb-8">
-          <div className="space-y-4">
-            {rows.map((w, i) => (
-              <div key={w.id ?? `new-${i}`} className="manifest-card p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-xs uppercase tracking-wide text-steel">
-                    {w.id ? `Waybill ${i + 1}` : `Waybill ${i + 1} (new)`}
-                  </span>
-                  <button type="button" onClick={() => removeRow(i)} className="text-xs text-alert hover:underline">
-                    Remove
+      <div className="space-y-2 mb-4">
+        {tracking.map((t) => {
+          const editable = orderEditable && isRowEditable(t)
+          const isEditingThis = editingId === t.id
+
+          return (
+            <div key={t.id} className="manifest-card p-4">
+              {isEditingThis ? (
+                <div className="flex items-center gap-2">
+                  <input
+                    autoFocus
+                    value={editValue}
+                    onChange={(e) => setEditValue(e.target.value)}
+                    className="flex-1 rounded-md border border-steel-line bg-white px-3 py-1.5 text-sm font-mono text-ink focus:border-amber outline-none"
+                  />
+                  <button
+                    onClick={() => saveEdit(t.id)}
+                    disabled={savingId === t.id}
+                    className="text-xs font-medium text-white bg-cargo rounded-md px-3 py-1.5 hover:opacity-90 disabled:opacity-50"
+                  >
+                    Save
+                  </button>
+                  <button onClick={() => setEditingId(null)} className="text-xs text-steel hover:text-ink">
+                    Cancel
                   </button>
                 </div>
-                <label className="block">
-                  <span className="block text-sm font-medium text-ink mb-1.5">Waybill number</span>
-                  <input
-                    value={w.waybill_number}
-                    onChange={(e) => updateRow(i, 'waybill_number', e.target.value)}
-                    className="w-full rounded-md border border-steel-line bg-white px-3.5 py-2.5 text-sm font-mono text-ink focus:border-amber outline-none"
-                  />
-                </label>
-              </div>
-            ))}
-          </div>
-
-          <button
-            type="button"
-            onClick={addRow}
-            className="mt-4 text-sm font-medium text-ink border border-steel-line rounded-md px-4 py-2 hover:border-amber transition-colors"
-          >
-            + Add another waybill
-          </button>
-
-          {saveError && <p className="text-sm text-alert mt-4">{saveError}</p>}
-
-          <div className="flex gap-3 mt-6">
-            <button
-              onClick={handleSave}
-              disabled={saving}
-              className="rounded-md bg-cargo text-white font-medium text-sm px-5 py-2.5 hover:opacity-90 transition-opacity disabled:opacity-50"
-            >
-              {saving ? 'Saving…' : 'Save changes'}
-            </button>
-            <button
-              onClick={() => setIsEditing(false)}
-              disabled={saving}
-              className="text-sm font-medium text-steel hover:text-ink"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      ) : (
-        <div className="space-y-2 mb-8">
-          {tracking.map((t) => (
-            <div key={t.id} className="manifest-card p-4 flex items-center justify-between">
-              <div>
-                <div className="font-mono text-sm text-ink">{t.waybill_number}</div>
-                <div className="text-xs text-steel mt-0.5">
-                  {t.quantity ? `Qty ${t.quantity}` : 'Awaiting confirmation from our team'}
+              ) : (
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="font-mono text-sm text-ink">{t.waybill_number}</div>
+                    <div className="text-xs text-steel mt-0.5">
+                      {t.quantity ? `Qty ${t.quantity}` : 'Awaiting confirmation from our team'}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    {editable ? (
+                      <>
+                        <button
+                          onClick={() => startEdit(t)}
+                          className="text-xs font-medium text-amber hover:text-ink"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => removeRow(t.id)}
+                          disabled={savingId === t.id}
+                          className="text-xs text-alert hover:underline disabled:opacity-50"
+                        >
+                          Remove
+                        </button>
+                      </>
+                    ) : orderEditable ? (
+                      <span className="text-xs text-steel">Received — locked</span>
+                    ) : null}
+                    <StatusStamp status={t.status} />
+                  </div>
                 </div>
-              </div>
-              <StatusStamp status={t.status} />
+              )}
+              {isEditingThis && rowError && <p className="text-xs text-alert mt-2">{rowError}</p>}
             </div>
-          ))}
+          )
+        })}
+      </div>
+
+      {orderEditable && (
+        <div className="mb-8">
+          {addingNew ? (
+            <form onSubmit={handleAddWaybill} className="manifest-card p-4 flex items-end gap-2">
+              <label className="flex-1">
+                <span className="block text-xs font-medium text-ink mb-1">New waybill number</span>
+                <input
+                  autoFocus
+                  value={newWaybill}
+                  onChange={(e) => setNewWaybill(e.target.value)}
+                  className="w-full rounded-md border border-steel-line bg-white px-3 py-2 text-sm font-mono text-ink focus:border-amber outline-none"
+                />
+              </label>
+              <button
+                type="submit"
+                disabled={adding}
+                className="text-sm font-medium text-white bg-ink rounded-md px-4 py-2 hover:bg-ink-soft disabled:opacity-50"
+              >
+                {adding ? 'Adding…' : 'Add'}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setAddingNew(false)
+                  setAddError('')
+                }}
+                className="text-sm text-steel hover:text-ink"
+              >
+                Cancel
+              </button>
+              {addError && <p className="text-xs text-alert">{addError}</p>}
+            </form>
+          ) : (
+            <button
+              onClick={() => setAddingNew(true)}
+              className="text-sm font-medium text-ink border border-steel-line rounded-md px-4 py-2 hover:border-amber transition-colors"
+            >
+              + Add another waybill
+            </button>
+          )}
         </div>
       )}
 
       {showPackingList && (
         <>
-          <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center justify-between mb-1">
             <h2 className="font-display text-lg font-semibold text-ink">Packing list</h2>
             {items.length > 0 && (
               <button
@@ -253,6 +271,7 @@ export default function BatchDetail() {
               </button>
             )}
           </div>
+          <p className="text-xs text-steel mb-3">Note: price excludes customs clearing.</p>
 
           {items.length === 0 ? (
             <p className="text-sm text-steel">Not added yet. It&rsquo;ll appear here once our team fills it in.</p>

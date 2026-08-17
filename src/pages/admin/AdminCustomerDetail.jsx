@@ -85,7 +85,15 @@ export default function AdminCustomerDetail() {
         />
       </div>
 
-      <h2 className="font-display text-lg font-semibold text-ink mb-3">Orders</h2>
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="font-display text-lg font-semibold text-ink">Orders</h2>
+        <Link
+          to={`/admin/customers/${id}/new-order`}
+          className="text-sm font-medium text-white bg-ink rounded-md px-4 py-2 hover:bg-ink-soft transition-colors"
+        >
+          + New order for this customer
+        </Link>
+      </div>
       {batches.length === 0 ? (
         <p className="text-sm text-steel">No orders yet.</p>
       ) : (

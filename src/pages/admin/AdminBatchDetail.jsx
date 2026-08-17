@@ -280,7 +280,8 @@ export default function AdminBatchDetail() {
         </button>
       </form>
 
-      <h2 className="font-display text-lg font-semibold text-ink mb-3">Packing list</h2>
+      <h2 className="font-display text-lg font-semibold text-ink mb-1">Packing list</h2>
+      <p className="text-xs text-steel mb-3">Note: price excludes customs clearing.</p>
 
       {items.length > 0 && (
         <div className="manifest-card overflow-hidden mb-4">
