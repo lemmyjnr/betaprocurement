@@ -175,7 +175,11 @@ export default function BatchDetail() {
                   <div>
                     <div className="font-mono text-sm text-ink">{t.waybill_number}</div>
                     <div className="text-xs text-steel mt-0.5">
-                      {t.quantity ? `Qty ${t.quantity}` : 'Awaiting confirmation from our team'}
+                      {t.quantity
+                        ? `Qty ${t.quantity}`
+                        : t.status === 'pending'
+                          ? 'Awaiting confirmation from our team'
+                          : ''}
                     </div>
                   </div>
                   <div className="flex items-center gap-3">

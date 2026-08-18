@@ -1,11 +1,11 @@
 const STYLES = {
   submitted: 'text-steel',
   pending: 'text-steel',
-  received: 'text-amber',
-  in_transit: 'text-amber',
-  shipped: 'text-amber',
-  arrived_port: 'text-cargo',
-  clearing: 'text-cargo',
+  received: 'text-info',
+  in_transit: 'text-transit',
+  shipped: 'text-transit',
+  arrived_port: 'text-port',
+  clearing: 'text-clearing',
   delivered: 'text-cargo',
 }
 

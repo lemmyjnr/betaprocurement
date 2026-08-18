@@ -18,6 +18,13 @@
   --color-steel: #5b6472;
   --color-steel-line: #d8d6cd;
 
+  /* One distinct color per stage of the shipping pipeline, so a
+     status is recognizable by color alone at a glance. */
+  --color-info: #2f6fb0;
+  --color-transit: #c9820a;
+  --color-port: #0f8a8a;
+  --color-clearing: #7c5cbf;
+
   --font-display: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, monospace;

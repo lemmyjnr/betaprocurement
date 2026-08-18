@@ -231,8 +231,13 @@ export default function AdminBatchDetail() {
       <div className="space-y-2 mb-4">
         {tracking.map((t) => (
           <div key={t.id} className="manifest-card p-4">
-            <div className="flex items-center justify-between mb-3">
-              <div className="font-mono text-sm text-ink">{t.waybill_number}</div>
+            <div className="flex items-center justify-between mb-3 gap-3">
+              <input
+                value={t.waybill_number}
+                onChange={(e) => handleTrackingFieldChange(t.id, 'waybill_number', e.target.value)}
+                onBlur={(e) => handleTrackingFieldSave(t.id, 'waybill_number', e.target.value)}
+                className="flex-1 rounded-md border border-steel-line bg-white px-3 py-1.5 text-sm font-mono text-ink focus:border-amber outline-none"
+              />
               <select
                 value={t.status}
                 onChange={(e) => handleTrackingStatusChange(t.id, e.target.value)}
