@@ -82,3 +82,14 @@ body {
   outline: 2px solid var(--color-amber);
   outline-offset: 2px;
 }
+
+/* iOS Safari auto-zooms the whole page when a focused input's font is
+   under 16px — that's the "budging" on focus. Forcing 16px on mobile
+   only stops the zoom without changing how anything looks on desktop. */
+@media (max-width: 767px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}

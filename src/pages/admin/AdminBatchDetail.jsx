@@ -92,6 +92,11 @@ export default function AdminBatchDetail() {
     setTracking((rows) => rows.map((r) => (r.id === trackingId ? { ...r, status } : r)))
   }
 
+  async function handleRemoveTracking(trackingId) {
+    await supabase.from('tracking_numbers').delete().eq('id', trackingId)
+    setTracking((rows) => rows.filter((r) => r.id !== trackingId))
+  }
+
   async function handleAddWaybill(e) {
     e.preventDefault()
     if (!newWaybill.waybill_number.trim()) return
@@ -252,6 +257,12 @@ export default function AdminBatchDetail() {
                 className="w-full rounded-md border border-steel-line bg-white px-3 py-1.5 text-sm text-ink focus:border-amber outline-none"
               />
             </label>
+            <button
+              onClick={() => handleRemoveTracking(t.id)}
+              className="text-xs text-alert hover:underline mt-3"
+            >
+              Remove waybill
+            </button>
           </div>
         ))}
       </div>

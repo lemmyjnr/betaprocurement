@@ -151,6 +151,16 @@ create policy "user updates own profile or admin updates any"
   on profiles for update
   using (id = auth.uid() or is_admin());
 
+-- Admin can delete a customer account, but not another admin's — an
+-- admin trying to remove another admin needs the owner-only Staff
+-- page flow (remove_admin(), further down). Deleting a profile here
+-- cascades to every batch/tracking number/packing list that customer
+-- ever had (see the "on delete cascade" on those tables) — permanent,
+-- by design, since there's no soft-delete concept in this app.
+create policy "admin deletes customer accounts"
+  on profiles for delete
+  using (is_admin() and role = 'customer');
+
 -- Batches
 create policy "customer views own batches or admin views all"
   on batches for select
@@ -205,18 +215,12 @@ create policy "edit tracking numbers while batch is editable"
     )
   );
 
-create policy "remove tracking numbers while batch is editable"
+-- Only admin can remove a tracking number — customers can edit
+-- their own pending waybills (see the update policy above) but
+-- never delete one outright.
+create policy "only admin removes tracking numbers"
   on tracking_numbers for delete
-  using (
-    exists (
-      select 1 from batches
-      where batches.id = tracking_numbers.batch_id
-      and (
-        (batches.customer_id = auth.uid() and batches.status in ('submitted', 'received') and tracking_numbers.status = 'pending')
-        or is_admin()
-      )
-    )
-  );
+  using (is_admin());
 
 -- Packing lists
 create policy "view packing lists for accessible batches"

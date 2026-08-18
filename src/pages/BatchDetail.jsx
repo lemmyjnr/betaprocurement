@@ -85,13 +85,6 @@ export default function BatchDetail() {
     await load()
   }
 
-  async function removeRow(trackingId) {
-    setSavingId(trackingId)
-    await supabase.from('tracking_numbers').delete().eq('id', trackingId)
-    setSavingId(null)
-    await load()
-  }
-
   async function handleAddWaybill(e) {
     e.preventDefault()
     setAddError('')
@@ -187,21 +180,12 @@ export default function BatchDetail() {
                   </div>
                   <div className="flex items-center gap-3">
                     {editable ? (
-                      <>
-                        <button
-                          onClick={() => startEdit(t)}
-                          className="text-xs font-medium text-amber hover:text-ink"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => removeRow(t.id)}
-                          disabled={savingId === t.id}
-                          className="text-xs text-alert hover:underline disabled:opacity-50"
-                        >
-                          Remove
-                        </button>
-                      </>
+                      <button
+                        onClick={() => startEdit(t)}
+                        className="text-xs font-medium text-amber hover:text-ink"
+                      >
+                        Edit
+                      </button>
                     ) : orderEditable ? (
                       <span className="text-xs text-steel">Received — locked</span>
                     ) : null}

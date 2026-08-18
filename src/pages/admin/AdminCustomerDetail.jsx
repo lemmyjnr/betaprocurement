@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import AppShell from '../../components/AppShell'
 import StatusStamp from '../../components/StatusStamp'
 import { supabase } from '../../lib/supabaseClient'
@@ -46,9 +46,12 @@ function EmailEditor({ customer, onSaved }) {
 
 export default function AdminCustomerDetail() {
   const { id } = useParams()
+  const navigate = useNavigate()
   const [customer, setCustomer] = useState(null)
   const [batches, setBatches] = useState([])
   const [loading, setLoading] = useState(true)
+  const [deleting, setDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState('')
 
   useEffect(() => {
     async function load() {
@@ -63,6 +66,23 @@ export default function AdminCustomerDetail() {
     load()
   }, [id])
 
+  async function handleDelete() {
+    const confirmed = confirm(
+      `Delete ${customer?.full_name}\u2019s account? This permanently removes their profile and every order, ` +
+        `tracking number, and packing list they have \u2014 ${batches.length} order(s) total. This can\u2019t be undone.`
+    )
+    if (!confirmed) return
+    setDeleting(true)
+    setDeleteError('')
+    const { error } = await supabase.from('profiles').delete().eq('id', id)
+    setDeleting(false)
+    if (error) {
+      setDeleteError(error.message)
+      return
+    }
+    navigate('/admin/customers')
+  }
+
   if (loading) {
     return (
       <AppShell title="Customer">
@@ -74,11 +94,23 @@ export default function AdminCustomerDetail() {
   return (
     <AppShell>
       <div className="mb-8">
-        <div className="font-mono text-xs text-steel uppercase tracking-wide mb-1">Customer</div>
-        <h1 className="font-display text-2xl font-semibold text-ink">{customer?.full_name}</h1>
-        <div className="text-sm text-steel mt-1">
-          {customer?.phone} · Ships as &ldquo;{customer?.shipping_name}&rdquo;
+        <div className="flex items-start justify-between">
+          <div>
+            <div className="font-mono text-xs text-steel uppercase tracking-wide mb-1">Customer</div>
+            <h1 className="font-display text-2xl font-semibold text-ink">{customer?.full_name}</h1>
+            <div className="text-sm text-steel mt-1">
+              {customer?.phone} · Ships as &ldquo;{customer?.shipping_name}&rdquo;
+            </div>
+          </div>
+          <button
+            onClick={handleDelete}
+            disabled={deleting}
+            className="text-xs text-alert hover:underline disabled:opacity-50 shrink-0"
+          >
+            {deleting ? 'Deleting…' : 'Delete customer'}
+          </button>
         </div>
+        {deleteError && <p className="text-xs text-alert mt-2">{deleteError}</p>}
         <EmailEditor
           customer={customer}
           onSaved={(email) => setCustomer((c) => ({ ...c, email }))}
