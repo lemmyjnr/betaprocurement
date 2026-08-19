@@ -178,7 +178,7 @@ export default function BatchDetail() {
                       {t.quantity
                         ? `Qty ${t.quantity}`
                         : t.status === 'pending'
-                          ? 'Awaiting confirmation from our team'
+                          ? 'Awaiting confirmation'
                           : ''}
                     </div>
                   </div>

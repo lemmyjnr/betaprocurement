@@ -9,6 +9,7 @@ export default function SignUp() {
   const { signUp } = useAuth()
   const navigate = useNavigate()
   const [form, setForm] = useState({ fullName: '', shippingName: '', phone: '', email: '', password: '' })
+  const [agreed, setAgreed] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -25,6 +26,10 @@ export default function SignUp() {
   async function handleSubmit(e) {
     e.preventDefault()
     setError('')
+    if (!agreed) {
+      setError('Please agree to the Terms & Conditions to continue.')
+      return
+    }
     setLoading(true)
     try {
       await signUp(form)
@@ -93,6 +98,21 @@ export default function SignUp() {
         </FormField>
 
         {error && <p className="text-sm text-alert mb-4">{error}</p>}
+
+        <label className="flex items-start gap-2 mb-5 text-sm text-steel cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={agreed}
+            onChange={(e) => setAgreed(e.target.checked)}
+            className="mt-0.5 rounded border-steel-line"
+          />
+          <span>
+            I agree to the{' '}
+            <Link to="/terms" target="_blank" className="text-ink font-medium hover:text-amber underline">
+              Terms &amp; Conditions
+            </Link>
+          </span>
+        </label>
 
         <PrimaryButton type="submit" loading={loading}>
           Create account

@@ -6,6 +6,7 @@ import Login from './pages/Login'
 import SignUp from './pages/SignUp'
 import StaffInvite from './pages/StaffInvite'
 import PublicTrack from './pages/PublicTrack'
+import Terms from './pages/Terms'
 import Dashboard from './pages/Dashboard'
 import BatchList from './pages/BatchList'
 import NewBatch from './pages/NewBatch'
@@ -30,6 +31,7 @@ export default function App() {
           <Route path="/signup" element={<SignUp />} />
           <Route path="/staff-invite/:inviteId" element={<StaffInvite />} />
           <Route path="/track" element={<PublicTrack />} />
+          <Route path="/terms" element={<Terms />} />
 
           <Route path="/" element={<RequireAuth><Dashboard /></RequireAuth>} />
           <Route path="/batches" element={<RequireAuth><BatchList /></RequireAuth>} />

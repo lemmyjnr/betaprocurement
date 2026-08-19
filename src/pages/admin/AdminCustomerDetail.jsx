@@ -68,13 +68,15 @@ export default function AdminCustomerDetail() {
 
   async function handleDelete() {
     const confirmed = confirm(
-      `Delete ${customer?.full_name}\u2019s account? This permanently removes their profile and every order, ` +
-        `tracking number, and packing list they have \u2014 ${batches.length} order(s) total. This can\u2019t be undone.`
+      `Permanently delete ${customer?.full_name}\u2019s account? This removes their login completely, plus every ` +
+        `order, tracking number, and packing list they have \u2014 ${batches.length} order(s) total. This can\u2019t be undone.`
     )
     if (!confirmed) return
     setDeleting(true)
     setDeleteError('')
-    const { error } = await supabase.from('profiles').delete().eq('id', id)
+    const { error } = await supabase.functions.invoke('delete-customer', {
+      body: { customerId: id },
+    })
     setDeleting(false)
     if (error) {
       setDeleteError(error.message)
