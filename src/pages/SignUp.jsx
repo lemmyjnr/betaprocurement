@@ -53,7 +53,6 @@ export default function SignUp() {
             required
             value={form.fullName}
             onChange={update('fullName')}
-            placeholder="Uju Chiemeka"
           />
         </FormField>
 
@@ -62,7 +61,6 @@ export default function SignUp() {
             required
             value={form.shippingName}
             onChange={update('shippingName')}
-            placeholder="Uju C. Ifeakor"
           />
         </FormField>
 
@@ -72,11 +70,11 @@ export default function SignUp() {
             type="tel"
             value={form.phone}
             onChange={update('phone')}
-            placeholder="0808 337 1869"
+            placeholder="080*******"
           />
         </FormField>
 
-        <FormField label="Email address" error="We'll use this to send you shipment status updates.">
+        <FormField label="Email address">
           <TextInput
             required
             type="email"

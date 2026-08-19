@@ -57,7 +57,7 @@ export default function Login() {
             required
             value={form.identifier}
             onChange={update('identifier')}
-            placeholder="0808 337 1869 or you@example.com"
+            placeholder="080******* or you@example.com"
           />
         </FormField>
 

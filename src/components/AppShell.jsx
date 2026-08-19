@@ -2,11 +2,12 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import BrandMark from './BrandMark'
 
-function NavItem({ to, children, end }) {
+function NavItem({ to, children, end, target }) {
   return (
     <NavLink
       to={to}
       end={end}
+      target={target}
       className={({ isActive }) =>
         `block px-3.5 py-2 rounded-md text-sm font-medium transition-colors ${
           isActive ? 'bg-white text-ink' : 'text-paper/70 hover:text-paper hover:bg-white/5'
@@ -58,6 +59,9 @@ export default function AppShell({ children, title }) {
               <NavItem to="/batches">My orders</NavItem>
               <NavItem to="/batches/new">Upload tracking numbers</NavItem>
               <NavItem to="/packing-lists">Packing lists</NavItem>
+              <NavItem to="/terms" target="_blank">
+                Terms &amp; Conditions
+              </NavItem>
             </>
           )}
           <div className="px-3.5 text-[11px] uppercase tracking-wide text-paper/40 mt-6 mb-1">Account</div>
