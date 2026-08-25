@@ -51,7 +51,7 @@ export default function AdminBatchDetail() {
   async function loadAll() {
     const [{ data: b }, { data: t }, { data: pl }] = await Promise.all([
       supabase.from('batches').select('*, profiles!batches_customer_id_fkey(full_name, phone)').eq('id', id).single(),
-      supabase.from('tracking_numbers').select('*').eq('batch_id', id).order('created_at'),
+      supabase.from('tracking_numbers').select('*').eq('batch_id', id).order('created_at').order('id'),
       supabase
         .from('packing_lists')
         .select('*, packing_list_items(*)')
@@ -99,12 +99,14 @@ export default function AdminBatchDetail() {
 
   async function handleAddWaybill(e) {
     e.preventDefault()
-    if (!newWaybill.waybill_number.trim()) return
-    const { error } = await supabase.from('tracking_numbers').insert({
-      batch_id: id,
-      waybill_number: newWaybill.waybill_number.trim(),
-      quantity: Number(newWaybill.quantity) || 1,
-    })
+    const numbers = [
+      ...new Set(newWaybill.waybill_number.split(/[\n,]/).map((s) => s.trim()).filter(Boolean)),
+    ]
+    if (numbers.length === 0) return
+    const qty = Number(newWaybill.quantity) || 1
+    const { error } = await supabase
+      .from('tracking_numbers')
+      .insert(numbers.map((waybill_number) => ({ batch_id: id, waybill_number, quantity: qty })))
     if (!error) {
       setNewWaybill({ waybill_number: '', quantity: 1 })
       loadAll()
@@ -272,28 +274,34 @@ export default function AdminBatchDetail() {
         ))}
       </div>
 
-      <form onSubmit={handleAddWaybill} className="manifest-card p-4 flex flex-wrap gap-3 items-end mb-8">
-        <label className="flex-1 min-w-[140px]">
-          <span className="block text-xs font-medium text-ink mb-1">Waybill number</span>
-          <input
+      <form onSubmit={handleAddWaybill} className="manifest-card p-4 mb-8">
+        <label className="block mb-3">
+          <span className="block text-xs font-medium text-ink mb-1">
+            Waybill number(s) — one per line, or separated by commas
+          </span>
+          <textarea
+            rows={3}
             value={newWaybill.waybill_number}
             onChange={(e) => setNewWaybill((w) => ({ ...w, waybill_number: e.target.value }))}
+            placeholder={'71009618\n71009619'}
             className="w-full rounded-md border border-steel-line bg-white px-3 py-2 text-sm font-mono"
           />
         </label>
-        <label className="w-20">
-          <span className="block text-xs font-medium text-ink mb-1">Qty</span>
-          <input
-            type="number"
-            min={1}
-            value={newWaybill.quantity}
-            onChange={(e) => setNewWaybill((w) => ({ ...w, quantity: e.target.value }))}
-            className="w-full rounded-md border border-steel-line bg-white px-3 py-2 text-sm"
-          />
-        </label>
-        <button type="submit" className="text-sm font-medium text-white bg-ink rounded-md px-4 py-2 hover:bg-ink-soft">
-          + Add
-        </button>
+        <div className="flex items-end gap-3">
+          <label className="w-24">
+            <span className="block text-xs font-medium text-ink mb-1">Qty each</span>
+            <input
+              type="number"
+              min={1}
+              value={newWaybill.quantity}
+              onChange={(e) => setNewWaybill((w) => ({ ...w, quantity: e.target.value }))}
+              className="w-full rounded-md border border-steel-line bg-white px-3 py-2 text-sm"
+            />
+          </label>
+          <button type="submit" className="text-sm font-medium text-white bg-ink rounded-md px-4 py-2 hover:bg-ink-soft">
+            + Add
+          </button>
+        </div>
       </form>
 
       <h2 className="font-display text-lg font-semibold text-ink mb-1">Packing list</h2>

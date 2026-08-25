@@ -38,7 +38,7 @@ export default function BatchDetail() {
   async function load() {
     const [{ data: b }, { data: t }, { data: pl }] = await Promise.all([
       supabase.from('batches').select('*').eq('id', id).single(),
-      supabase.from('tracking_numbers').select('*').eq('batch_id', id).order('created_at'),
+      supabase.from('tracking_numbers').select('*').eq('batch_id', id).order('created_at').order('id'),
       supabase
         .from('packing_lists')
         .select('*, packing_list_items(*)')
@@ -88,14 +88,15 @@ export default function BatchDetail() {
   async function handleAddWaybill(e) {
     e.preventDefault()
     setAddError('')
-    if (!newWaybill.trim()) {
-      setAddError('Enter a waybill number.')
+    const numbers = [...new Set(newWaybill.split(/[\n,]/).map((s) => s.trim()).filter(Boolean))]
+    if (numbers.length === 0) {
+      setAddError('Enter at least one waybill number.')
       return
     }
     setAdding(true)
     const { error } = await supabase
       .from('tracking_numbers')
-      .insert({ batch_id: id, waybill_number: newWaybill.trim() })
+      .insert(numbers.map((waybill_number) => ({ batch_id: id, waybill_number })))
     setAdding(false)
     if (error) {
       setAddError(error.message)
@@ -206,34 +207,40 @@ export default function BatchDetail() {
       {orderEditable && (
         <div className="mb-8">
           {addingNew ? (
-            <form onSubmit={handleAddWaybill} className="manifest-card p-4 flex items-end gap-2">
-              <label className="flex-1">
-                <span className="block text-xs font-medium text-ink mb-1">New waybill number</span>
-                <input
+            <form onSubmit={handleAddWaybill} className="manifest-card p-4">
+              <label className="block mb-3">
+                <span className="block text-xs font-medium text-ink mb-1">
+                  New waybill number(s) — one per line, or separated by commas
+                </span>
+                <textarea
                   autoFocus
+                  rows={3}
                   value={newWaybill}
                   onChange={(e) => setNewWaybill(e.target.value)}
+                  placeholder={'71009618\n71009619'}
                   className="w-full rounded-md border border-steel-line bg-white px-3 py-2 text-sm font-mono text-ink focus:border-amber outline-none"
                 />
               </label>
-              <button
-                type="submit"
-                disabled={adding}
-                className="text-sm font-medium text-white bg-ink rounded-md px-4 py-2 hover:bg-ink-soft disabled:opacity-50"
-              >
-                {adding ? 'Adding…' : 'Add'}
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setAddingNew(false)
-                  setAddError('')
-                }}
-                className="text-sm text-steel hover:text-ink"
-              >
-                Cancel
-              </button>
-              {addError && <p className="text-xs text-alert">{addError}</p>}
+              <div className="flex items-center gap-3">
+                <button
+                  type="submit"
+                  disabled={adding}
+                  className="text-sm font-medium text-white bg-ink rounded-md px-4 py-2 hover:bg-ink-soft disabled:opacity-50"
+                >
+                  {adding ? 'Adding…' : 'Add'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAddingNew(false)
+                    setAddError('')
+                  }}
+                  className="text-sm text-steel hover:text-ink"
+                >
+                  Cancel
+                </button>
+              </div>
+              {addError && <p className="text-xs text-alert mt-2">{addError}</p>}
             </form>
           ) : (
             <button
