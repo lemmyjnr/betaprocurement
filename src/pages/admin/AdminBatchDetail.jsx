@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import AppShell from '../../components/AppShell'
 import StatusStamp from '../../components/StatusStamp'
 import { supabase } from '../../lib/supabaseClient'
@@ -35,7 +35,6 @@ const emptyItem = () => ({
 
 export default function AdminBatchDetail() {
   const { id } = useParams()
-  const navigate = useNavigate()
   const { profile, session } = useAuth()
   const uploaderId = profile?.id || session?.user?.id
   const [batch, setBatch] = useState(null)
@@ -48,27 +47,11 @@ export default function AdminBatchDetail() {
   const [useDimensions, setUseDimensions] = useState(false)
   const [savingItem, setSavingItem] = useState(false)
   const [message, setMessage] = useState('')
-  const [deletingOrder, setDeletingOrder] = useState(false)
-
-  async function handleDeleteOrder() {
-    const confirmed = confirm(
-      `Permanently delete order ${batch?.batch_code}? This removes every tracking number and packing list on it. This can\u2019t be undone.`
-    )
-    if (!confirmed) return
-    setDeletingOrder(true)
-    const { error } = await supabase.from('batches').delete().eq('id', id)
-    setDeletingOrder(false)
-    if (error) {
-      setMessage(error.message)
-      return
-    }
-    navigate('/admin/batches')
-  }
 
   async function loadAll() {
     const [{ data: b }, { data: t }, { data: pl }] = await Promise.all([
       supabase.from('batches').select('*, profiles!batches_customer_id_fkey(full_name, phone)').eq('id', id).single(),
-      supabase.from('tracking_numbers').select('*').eq('batch_id', id).order('created_at').order('id'),
+      supabase.from('tracking_numbers').select('*').eq('batch_id', id).order('created_at'),
       supabase
         .from('packing_lists')
         .select('*, packing_list_items(*)')
@@ -116,14 +99,12 @@ export default function AdminBatchDetail() {
 
   async function handleAddWaybill(e) {
     e.preventDefault()
-    const numbers = [
-      ...new Set(newWaybill.waybill_number.split(/[\n,]/).map((s) => s.trim()).filter(Boolean)),
-    ]
-    if (numbers.length === 0) return
-    const qty = Number(newWaybill.quantity) || 1
-    const { error } = await supabase
-      .from('tracking_numbers')
-      .insert(numbers.map((waybill_number) => ({ batch_id: id, waybill_number, quantity: qty })))
+    if (!newWaybill.waybill_number.trim()) return
+    const { error } = await supabase.from('tracking_numbers').insert({
+      batch_id: id,
+      waybill_number: newWaybill.waybill_number.trim(),
+      quantity: Number(newWaybill.quantity) || 1,
+    })
     if (!error) {
       setNewWaybill({ waybill_number: '', quantity: 1 })
       loadAll()
@@ -233,26 +214,17 @@ export default function AdminBatchDetail() {
             {batch.route && <span>· {formatRoute(batch.route)}</span>}
           </div>
         </div>
-        <div className="flex flex-col items-end gap-2">
-          <select
-            value={batch.status}
-            onChange={(e) => handleStatusChange(e.target.value)}
-            className="rounded-md border border-steel-line bg-white px-3 py-1.5 text-sm text-ink"
-          >
-            {BATCH_STATUSES.map((s) => (
-              <option key={s} value={s}>
-                {BATCH_STATUS_LABELS[s]}
-              </option>
-            ))}
-          </select>
-          <button
-            onClick={handleDeleteOrder}
-            disabled={deletingOrder}
-            className="text-xs text-alert hover:underline disabled:opacity-50"
-          >
-            {deletingOrder ? 'Deleting…' : 'Delete order'}
-          </button>
-        </div>
+        <select
+          value={batch.status}
+          onChange={(e) => handleStatusChange(e.target.value)}
+          className="rounded-md border border-steel-line bg-white px-3 py-1.5 text-sm text-ink"
+        >
+          {BATCH_STATUSES.map((s) => (
+            <option key={s} value={s}>
+              {BATCH_STATUS_LABELS[s]}
+            </option>
+          ))}
+        </select>
       </div>
 
       <h2 className="font-display text-lg font-semibold text-ink mt-8 mb-3">Tracking numbers</h2>
@@ -300,34 +272,28 @@ export default function AdminBatchDetail() {
         ))}
       </div>
 
-      <form onSubmit={handleAddWaybill} className="manifest-card p-4 mb-8">
-        <label className="block mb-3">
-          <span className="block text-xs font-medium text-ink mb-1">
-            Waybill number(s) — one per line, or separated by commas
-          </span>
-          <textarea
-            rows={3}
+      <form onSubmit={handleAddWaybill} className="manifest-card p-4 flex flex-wrap gap-3 items-end mb-8">
+        <label className="flex-1 min-w-[140px]">
+          <span className="block text-xs font-medium text-ink mb-1">Waybill number</span>
+          <input
             value={newWaybill.waybill_number}
             onChange={(e) => setNewWaybill((w) => ({ ...w, waybill_number: e.target.value }))}
-            placeholder={'71009618\n71009619'}
             className="w-full rounded-md border border-steel-line bg-white px-3 py-2 text-sm font-mono"
           />
         </label>
-        <div className="flex items-end gap-3">
-          <label className="w-24">
-            <span className="block text-xs font-medium text-ink mb-1">Qty each</span>
-            <input
-              type="number"
-              min={1}
-              value={newWaybill.quantity}
-              onChange={(e) => setNewWaybill((w) => ({ ...w, quantity: e.target.value }))}
-              className="w-full rounded-md border border-steel-line bg-white px-3 py-2 text-sm"
-            />
-          </label>
-          <button type="submit" className="text-sm font-medium text-white bg-ink rounded-md px-4 py-2 hover:bg-ink-soft">
-            + Add
-          </button>
-        </div>
+        <label className="w-20">
+          <span className="block text-xs font-medium text-ink mb-1">Qty</span>
+          <input
+            type="number"
+            min={1}
+            value={newWaybill.quantity}
+            onChange={(e) => setNewWaybill((w) => ({ ...w, quantity: e.target.value }))}
+            className="w-full rounded-md border border-steel-line bg-white px-3 py-2 text-sm"
+          />
+        </label>
+        <button type="submit" className="text-sm font-medium text-white bg-ink rounded-md px-4 py-2 hover:bg-ink-soft">
+          + Add
+        </button>
       </form>
 
       <h2 className="font-display text-lg font-semibold text-ink mb-1">Packing list</h2>

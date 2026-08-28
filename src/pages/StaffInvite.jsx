@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import AuthLayout from '../components/AuthLayout'
-import FormField, { TextInput, PasswordInput, PrimaryButton } from '../components/FormField'
+import FormField, { TextInput, PrimaryButton } from '../components/FormField'
 import { useAuth } from '../context/AuthContext'
 
 export default function StaffInvite() {
@@ -78,7 +78,7 @@ export default function StaffInvite() {
           <TextInput type="email" value={form.email} onChange={update('email')} />
         </FormField>
         <FormField label="Password">
-          <PasswordInput required minLength={6} value={form.password} onChange={update('password')} />
+          <TextInput required type="password" minLength={6} value={form.password} onChange={update('password')} />
         </FormField>
         {error && <p className="text-sm text-alert mb-4">{error}</p>}
         <PrimaryButton type="submit" loading={submitting}>

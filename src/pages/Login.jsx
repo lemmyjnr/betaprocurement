@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import AuthLayout from '../components/AuthLayout'
-import FormField, { TextInput, PasswordInput, PrimaryButton } from '../components/FormField'
+import FormField, { TextInput, PrimaryButton } from '../components/FormField'
 import { useAuth } from '../context/AuthContext'
 import { isAdminHost } from '../lib/portalHost'
 
@@ -62,8 +62,9 @@ export default function Login() {
         </FormField>
 
         <FormField label="Password">
-          <PasswordInput
+          <TextInput
             required
+            type="password"
             value={form.password}
             onChange={update('password')}
             placeholder="Your password"

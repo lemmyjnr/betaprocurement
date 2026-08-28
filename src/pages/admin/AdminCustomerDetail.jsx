@@ -3,64 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import AppShell from '../../components/AppShell'
 import StatusStamp from '../../components/StatusStamp'
 import { supabase } from '../../lib/supabaseClient'
-import { useAuth } from '../../context/AuthContext'
 import { formatServiceType, formatRoute } from '../../lib/labels'
-
-function PasswordReset({ customerId }) {
-  const { adminResetPassword } = useAuth()
-  const [open, setOpen] = useState(false)
-  const [newPassword, setNewPassword] = useState('')
-  const [saving, setSaving] = useState(false)
-  const [message, setMessage] = useState('')
-
-  async function handleReset(e) {
-    e.preventDefault()
-    setSaving(true)
-    setMessage('')
-    try {
-      await adminResetPassword(customerId, newPassword)
-      setMessage('Password updated \u2014 let the customer know their new password directly.')
-      setNewPassword('')
-    } catch (err) {
-      setMessage(err.message || 'Could not reset this password.')
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  if (!open) {
-    return (
-      <button onClick={() => setOpen(true)} className="text-xs font-medium text-amber hover:text-ink mt-2">
-        Reset password
-      </button>
-    )
-  }
-
-  return (
-    <form onSubmit={handleReset} className="flex items-center gap-2 mt-2">
-      <input
-        required
-        minLength={6}
-        type="text"
-        value={newPassword}
-        onChange={(e) => setNewPassword(e.target.value)}
-        placeholder="New password"
-        className="rounded-md border border-steel-line bg-white px-3 py-1.5 text-sm text-ink w-48 focus:border-amber outline-none"
-      />
-      <button
-        type="submit"
-        disabled={saving}
-        className="text-sm font-medium text-white bg-ink rounded-md px-3 py-1.5 hover:bg-ink-soft disabled:opacity-50"
-      >
-        {saving ? 'Saving…' : 'Set password'}
-      </button>
-      <button type="button" onClick={() => setOpen(false)} className="text-xs text-steel hover:text-ink">
-        Cancel
-      </button>
-      {message && <span className="text-xs text-steel">{message}</span>}
-    </form>
-  )
-}
 
 function EmailEditor({ customer, onSaved }) {
   const [email, setEmail] = useState(customer?.email || '')
@@ -95,6 +38,46 @@ function EmailEditor({ customer, onSaved }) {
         className="text-sm font-medium text-white bg-ink rounded-md px-3 py-1.5 hover:bg-ink-soft disabled:opacity-50"
       >
         {saving ? 'Saving…' : 'Save'}
+      </button>
+      {message && <span className="text-xs text-steel">{message}</span>}
+    </form>
+  )
+}
+
+function PasswordResetEditor({ customer }) {
+  const [newPassword, setNewPassword] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [message, setMessage] = useState('')
+
+  async function handleReset(e) {
+    e.preventDefault()
+    setSaving(true)
+    setMessage('')
+    const { error } = await supabase.functions.invoke('admin-reset-password', {
+      body: { targetId: customer.id, newPassword },
+    })
+    setSaving(false)
+    setMessage(error ? error.message : 'Password reset. Share the new one with the customer directly.')
+    if (!error) setNewPassword('')
+  }
+
+  return (
+    <form onSubmit={handleReset} className="flex items-center gap-2 mt-2">
+      <input
+        type="text"
+        value={newPassword}
+        onChange={(e) => setNewPassword(e.target.value)}
+        placeholder="New temporary password"
+        minLength={6}
+        required
+        className="rounded-md border border-steel-line bg-white px-3 py-1.5 text-sm text-ink w-64 focus:border-amber outline-none"
+      />
+      <button
+        type="submit"
+        disabled={saving}
+        className="text-sm font-medium text-white bg-ink rounded-md px-3 py-1.5 hover:bg-ink-soft disabled:opacity-50"
+      >
+        {saving ? 'Resetting…' : 'Reset password'}
       </button>
       {message && <span className="text-xs text-steel">{message}</span>}
     </form>
@@ -174,7 +157,7 @@ export default function AdminCustomerDetail() {
           customer={customer}
           onSaved={(email) => setCustomer((c) => ({ ...c, email }))}
         />
-        <PasswordReset customerId={id} />
+        <PasswordResetEditor customer={customer} />
       </div>
 
       <div className="flex items-center justify-between mb-3">

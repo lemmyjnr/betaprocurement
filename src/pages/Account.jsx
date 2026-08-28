@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import AppShell from '../components/AppShell'
-import FormField, { TextInput, PasswordInput, PrimaryButton } from '../components/FormField'
+import FormField, { TextInput, PrimaryButton } from '../components/FormField'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../context/AuthContext'
 
@@ -91,16 +91,18 @@ function PasswordSection() {
     <form onSubmit={handleSubmit} className="max-w-sm">
       <h2 className="font-display text-lg font-semibold text-ink mb-4">Change password</h2>
       <FormField label="New password">
-        <PasswordInput
+        <TextInput
           required
+          type="password"
           minLength={6}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
         />
       </FormField>
       <FormField label="Confirm new password">
-        <PasswordInput
+        <TextInput
           required
+          type="password"
           minLength={6}
           value={confirm}
           onChange={(e) => setConfirm(e.target.value)}
