@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
 import AuthLayout from '../components/AuthLayout'
-import FormField, { TextInput, PrimaryButton } from '../components/FormField'
+import FormField, { TextInput, PasswordInput, PrimaryButton } from '../components/FormField'
 import { useAuth } from '../context/AuthContext'
 import { isAdminHost } from '../lib/portalHost'
 
@@ -85,9 +85,8 @@ export default function SignUp() {
         </FormField>
 
         <FormField label="Password">
-          <TextInput
+          <PasswordInput
             required
-            type="password"
             minLength={6}
             value={form.password}
             onChange={update('password')}

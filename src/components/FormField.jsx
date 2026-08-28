@@ -1,3 +1,5 @@
+import { useState } from 'react'
+
 export default function FormField({ label, error, children }) {
   return (
     <label className="block mb-4">
@@ -14,6 +16,27 @@ export function TextInput(props) {
       {...props}
       className="w-full rounded-md border border-steel-line bg-white px-3.5 py-2.5 text-sm text-ink placeholder:text-steel/60 focus:border-amber outline-none transition-colors"
     />
+  )
+}
+
+export function PasswordInput(props) {
+  const [visible, setVisible] = useState(false)
+  return (
+    <div className="relative">
+      <input
+        {...props}
+        type={visible ? 'text' : 'password'}
+        className="w-full rounded-md border border-steel-line bg-white px-3.5 py-2.5 pr-16 text-sm text-ink placeholder:text-steel/60 focus:border-amber outline-none transition-colors"
+      />
+      <button
+        type="button"
+        onClick={() => setVisible((v) => !v)}
+        className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-steel hover:text-ink"
+        tabIndex={-1}
+      >
+        {visible ? 'Hide' : 'Show'}
+      </button>
+    </div>
   )
 }
 

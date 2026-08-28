@@ -174,6 +174,12 @@ create policy "admin updates batch status"
   on batches for update
   using (is_admin());
 
+-- Deleting an order cascades to every tracking number and packing
+-- list on it (see "on delete cascade" on those tables) — permanent.
+create policy "admin deletes batches"
+  on batches for delete
+  using (is_admin());
+
 -- Tracking numbers
 create policy "view tracking numbers for accessible batches"
   on tracking_numbers for select

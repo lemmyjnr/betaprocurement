@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import AppShell from '../../components/AppShell'
 import StatusStamp from '../../components/StatusStamp'
 import { supabase } from '../../lib/supabaseClient'
@@ -35,6 +35,7 @@ const emptyItem = () => ({
 
 export default function AdminBatchDetail() {
   const { id } = useParams()
+  const navigate = useNavigate()
   const { profile, session } = useAuth()
   const uploaderId = profile?.id || session?.user?.id
   const [batch, setBatch] = useState(null)
@@ -47,6 +48,22 @@ export default function AdminBatchDetail() {
   const [useDimensions, setUseDimensions] = useState(false)
   const [savingItem, setSavingItem] = useState(false)
   const [message, setMessage] = useState('')
+  const [deletingOrder, setDeletingOrder] = useState(false)
+
+  async function handleDeleteOrder() {
+    const confirmed = confirm(
+      `Permanently delete order ${batch?.batch_code}? This removes every tracking number and packing list on it. This can\u2019t be undone.`
+    )
+    if (!confirmed) return
+    setDeletingOrder(true)
+    const { error } = await supabase.from('batches').delete().eq('id', id)
+    setDeletingOrder(false)
+    if (error) {
+      setMessage(error.message)
+      return
+    }
+    navigate('/admin/batches')
+  }
 
   async function loadAll() {
     const [{ data: b }, { data: t }, { data: pl }] = await Promise.all([
@@ -216,17 +233,26 @@ export default function AdminBatchDetail() {
             {batch.route && <span>· {formatRoute(batch.route)}</span>}
           </div>
         </div>
-        <select
-          value={batch.status}
-          onChange={(e) => handleStatusChange(e.target.value)}
-          className="rounded-md border border-steel-line bg-white px-3 py-1.5 text-sm text-ink"
-        >
-          {BATCH_STATUSES.map((s) => (
-            <option key={s} value={s}>
-              {BATCH_STATUS_LABELS[s]}
-            </option>
-          ))}
-        </select>
+        <div className="flex flex-col items-end gap-2">
+          <select
+            value={batch.status}
+            onChange={(e) => handleStatusChange(e.target.value)}
+            className="rounded-md border border-steel-line bg-white px-3 py-1.5 text-sm text-ink"
+          >
+            {BATCH_STATUSES.map((s) => (
+              <option key={s} value={s}>
+                {BATCH_STATUS_LABELS[s]}
+              </option>
+            ))}
+          </select>
+          <button
+            onClick={handleDeleteOrder}
+            disabled={deletingOrder}
+            className="text-xs text-alert hover:underline disabled:opacity-50"
+          >
+            {deletingOrder ? 'Deleting…' : 'Delete order'}
+          </button>
+        </div>
       </div>
 
       <h2 className="font-display text-lg font-semibold text-ink mt-8 mb-3">Tracking numbers</h2>
