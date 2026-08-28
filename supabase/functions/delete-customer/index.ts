@@ -9,16 +9,39 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
+// Browsers send a CORS "preflight" OPTIONS request before the real
+// POST when a function is called directly from client-side JS (which
+// is exactly what supabase.functions.invoke() does). Without these
+// headers, the browser blocks the request before it ever reaches
+// this code, and supabase-js reports it back as a generic
+// "Failed to send a request to the Edge Function" — indistinguishable
+// from the function not existing at all. Every function called from
+// the browser needs this same block.
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
+
 Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders })
+  }
+
   try {
     const { customerId } = await req.json()
     if (!customerId) {
-      return new Response(JSON.stringify({ error: 'customerId is required' }), { status: 400 })
+      return new Response(JSON.stringify({ error: 'customerId is required' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
     }
 
     const authHeader = req.headers.get('Authorization')
     if (!authHeader) {
-      return new Response(JSON.stringify({ error: 'Missing authorization' }), { status: 401 })
+      return new Response(JSON.stringify({ error: 'Missing authorization' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
     }
 
     // Scoped to the CALLER's own login — used only to check who's asking.
@@ -33,12 +56,18 @@ Deno.serve(async (req) => {
       error: userError,
     } = await callerClient.auth.getUser()
     if (userError || !user) {
-      return new Response(JSON.stringify({ error: 'Not authenticated' }), { status: 401 })
+      return new Response(JSON.stringify({ error: 'Not authenticated' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
     }
 
     const { data: callerProfile } = await callerClient.from('profiles').select('role').eq('id', user.id).single()
     if (callerProfile?.role !== 'admin') {
-      return new Response(JSON.stringify({ error: 'Admins only' }), { status: 403 })
+      return new Response(JSON.stringify({ error: 'Admins only' }), {
+        status: 403,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
     }
 
     // The service role key — this is the only thing that can actually
@@ -50,18 +79,27 @@ Deno.serve(async (req) => {
     // admin is still owner-only, via the Staff page.
     const { data: target } = await adminClient.from('profiles').select('role').eq('id', customerId).single()
     if (target?.role !== 'customer') {
-      return new Response(JSON.stringify({ error: 'This can only delete customer accounts.' }), { status: 400 })
+      return new Response(JSON.stringify({ error: 'This can only delete customer accounts.' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
     }
 
     const { error: deleteError } = await adminClient.auth.admin.deleteUser(customerId)
     if (deleteError) {
-      return new Response(JSON.stringify({ error: deleteError.message }), { status: 500 })
+      return new Response(JSON.stringify({ error: deleteError.message }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
     }
 
     return new Response(JSON.stringify({ success: true }), {
-      headers: { 'Content-Type': 'application/json' },
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
   } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), { status: 500 })
+    return new Response(JSON.stringify({ error: err.message }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    })
   }
 })

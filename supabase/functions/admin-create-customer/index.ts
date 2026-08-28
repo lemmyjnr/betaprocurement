@@ -16,16 +16,39 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
+// Browsers send a CORS "preflight" OPTIONS request before the real
+// POST when a function is called directly from client-side JS (which
+// is exactly what supabase.functions.invoke() does). Without these
+// headers, the browser blocks the request before it ever reaches
+// this code, and supabase-js reports it back as a generic
+// "Failed to send a request to the Edge Function" — indistinguishable
+// from the function not existing at all. Every function called from
+// the browser needs this same block.
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
+
 Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders })
+  }
+
   try {
     const { fullName, shippingName, phone, email, password, role } = await req.json()
     if (!fullName || !shippingName || !phone || !password) {
-      return new Response(JSON.stringify({ error: 'Missing required fields.' }), { status: 400 })
+      return new Response(JSON.stringify({ error: 'Missing required fields.' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
     }
 
     const authHeader = req.headers.get('Authorization')
     if (!authHeader) {
-      return new Response(JSON.stringify({ error: 'Missing authorization' }), { status: 401 })
+      return new Response(JSON.stringify({ error: 'Missing authorization' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
     }
 
     // Scoped to the CALLER's own login — used only to check who's asking.
@@ -40,19 +63,28 @@ Deno.serve(async (req) => {
       error: callerError,
     } = await callerClient.auth.getUser()
     if (callerError || !caller) {
-      return new Response(JSON.stringify({ error: 'Not authenticated' }), { status: 401 })
+      return new Response(JSON.stringify({ error: 'Not authenticated' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
     }
 
     const { data: callerProfile } = await callerClient.from('profiles').select('role, is_owner').eq('id', caller.id).single()
     if (callerProfile?.role !== 'admin') {
-      return new Response(JSON.stringify({ error: 'Admins only' }), { status: 403 })
+      return new Response(JSON.stringify({ error: 'Admins only' }), {
+        status: 403,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
     }
 
     // Only the owner can create another admin this way — matches the
     // same rule the Staff page's invite links already enforce.
     const targetRole = role === 'admin' ? 'admin' : 'customer'
     if (targetRole === 'admin' && !callerProfile?.is_owner) {
-      return new Response(JSON.stringify({ error: 'Only the owner can create admin accounts.' }), { status: 403 })
+      return new Response(JSON.stringify({ error: 'Only the owner can create admin accounts.' }), {
+        status: 403,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
     }
 
     const trimmedEmail = email?.trim().toLowerCase()
@@ -69,7 +101,10 @@ Deno.serve(async (req) => {
       email_confirm: true,
     })
     if (createError) {
-      return new Response(JSON.stringify({ error: createError.message }), { status: 400 })
+      return new Response(JSON.stringify({ error: createError.message }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
     }
 
     const { error: profileError } = await adminClient.from('profiles').insert({
@@ -85,13 +120,19 @@ Deno.serve(async (req) => {
     if (profileError) {
       // Roll back the auth user so there's no orphaned login with no profile.
       await adminClient.auth.admin.deleteUser(created.user.id)
-      return new Response(JSON.stringify({ error: profileError.message }), { status: 400 })
+      return new Response(JSON.stringify({ error: profileError.message }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
     }
 
     return new Response(JSON.stringify({ userId: created.user.id }), {
-      headers: { 'Content-Type': 'application/json' },
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
   } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), { status: 500 })
+    return new Response(JSON.stringify({ error: err.message }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    })
   }
 })
