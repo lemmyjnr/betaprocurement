@@ -86,6 +86,38 @@ worth doing if the client wants a shareable, no-login tracking link.
    here don't go through email confirmation, so leaving this on will
    block every sign-up.
 
+## Deploying the Edge Functions
+
+Three features — deleting a customer, creating a customer account as
+admin, and resetting a customer's password as admin — run as
+Supabase Edge Functions (`supabase/functions/`), not from the
+browser directly, because they need the service role key. **Writing
+the code in this repo does not make it live** — each function has to
+be deployed to your Supabase project separately, and this project
+isn't wired up to the Supabase CLI (no `supabase/config.toml`), so
+the easiest path is the dashboard:
+
+1. In your Supabase project, go to **Edge Functions** → **Deploy a
+   new function**.
+2. Name it exactly as the folder is named (`delete-customer`,
+   `admin-create-customer`, or `admin-reset-password`), and paste in
+   the contents of that folder's `index.ts`.
+3. Repeat for all three — they're independent, so each one has to be
+   created and deployed on its own.
+
+If a button in the app that should call one of these (Delete
+customer, Set password, admin's "create customer" form) fails with
+**"Failed to send a request to the Edge Function"**, that specific
+function hasn't been deployed yet (or was renamed) — that error means
+the request never reached a function at all, as opposed to the
+function running and returning its own error message. Re-check step
+2 for that function's name.
+
+If you'd rather use the CLI going forward: `supabase init`, then
+`supabase link --project-ref YOUR_PROJECT_REF`, then
+`supabase functions deploy delete-customer` (repeat per function, or
+`supabase functions deploy` with no name to deploy all of them).
+
 ## Setting up shipment status emails (Resend)
 
 Batch status changes trigger an email automatically once this is set

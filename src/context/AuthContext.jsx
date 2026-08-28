@@ -123,28 +123,19 @@ export function AuthProvider({ children }) {
   }
 
   // For staff creating a customer account on the client's behalf.
-  // Requires the admin's session; RLS on profiles allows this because
-  // is_admin() checks the caller's own role.
+  // This has to go through a server-side Edge Function, not a direct
+  // supabase.auth.signUp() call — signUp() also logs the CALLER in
+  // as the account it just created, which was silently signing admin
+  // out of their own session and dropping them onto the customer
+  // dashboard every time. The Edge Function creates the account
+  // without touching anyone's session.
   async function adminCreateCustomer({ fullName, shippingName, phone, email, password, role = 'customer' }) {
-    const trimmedEmail = email?.trim().toLowerCase()
-    const authEmail = trimmedEmail ? trimmedEmail : phoneToAuthEmail(phone)
-    const { data, error } = await supabase.auth.signUp({ email: authEmail, password })
-    if (error) throw error
-    const userId = data.user?.id
-    if (!userId) throw new Error('Could not create the account.')
-
-    const { error: profileError } = await supabase.from('profiles').insert({
-      id: userId,
-      full_name: fullName,
-      shipping_name: shippingName,
-      phone,
-      email: trimmedEmail || null,
-      auth_email: authEmail,
-      role,
-      phone_verified: true, // staff-created accounts skip OTP; they've verified the customer directly
+    const { data, error } = await supabase.functions.invoke('admin-create-customer', {
+      body: { fullName, shippingName, phone, email, password, role },
     })
-    if (profileError) throw profileError
-    return userId
+    if (error) throw error
+    if (data?.error) throw new Error(data.error)
+    return data.userId
   }
 
   // Admin generates a one-time link instead of typing a new staff
@@ -177,6 +168,17 @@ export function AuthProvider({ children }) {
   async function removeAdmin(targetId) {
     const { error } = await supabase.rpc('remove_admin', { target_id: targetId })
     if (error) throw error
+  }
+
+  // For a customer who's locked out and has no email to send a reset
+  // link to. Sets their password directly — tell them the new one
+  // yourself (call, WhatsApp, etc.).
+  async function adminResetPassword(customerId, newPassword) {
+    const { data, error } = await supabase.functions.invoke('admin-reset-password', {
+      body: { customerId, newPassword },
+    })
+    if (error) throw error
+    if (data?.error) throw new Error(data.error)
   }
 
   // The invitee's own sign-up flow: create their login, then redeem
@@ -219,6 +221,7 @@ export function AuthProvider({ children }) {
     redeemStaffInvite,
     setAdminSuspended,
     removeAdmin,
+    adminResetPassword,
     refreshProfile: () => session?.user && loadProfile(session.user.id),
   }
 
