@@ -97,7 +97,11 @@ export default function AdminBatchDetail() {
   }, [id])
 
   async function handleStatusChange(status) {
-    await supabase.from('batches').update({ status }).eq('id', id)
+    const { error } = await supabase.from('batches').update({ status }).eq('id', id)
+    if (error) {
+      setMessage(error.message)
+      return
+    }
     setBatch((b) => ({ ...b, status }))
   }
 
@@ -106,19 +110,36 @@ export default function AdminBatchDetail() {
   }
 
   async function handleTrackingFieldSave(trackingId, field, value) {
-    await supabase
+    const { error } = await supabase
       .from('tracking_numbers')
       .update({ [field]: field === 'quantity' ? Number(value) || null : value })
       .eq('id', trackingId)
+    if (error) setMessage(error.message)
   }
 
   async function handleTrackingStatusChange(trackingId, status) {
-    await supabase.from('tracking_numbers').update({ status }).eq('id', trackingId)
+    const { error } = await supabase.from('tracking_numbers').update({ status }).eq('id', trackingId)
+    if (error) {
+      setMessage(error.message)
+      return
+    }
     setTracking((rows) => rows.map((r) => (r.id === trackingId ? { ...r, status } : r)))
   }
 
   async function handleRemoveTracking(trackingId) {
-    await supabase.from('tracking_numbers').delete().eq('id', trackingId)
+    // .select() matters here the same way it does for deleting an
+    // order: without it, a delete that RLS silently blocks (0 rows
+    // matched) reports no error, and the row would disappear from
+    // the screen even though it's still sitting in the database.
+    const { data, error } = await supabase.from('tracking_numbers').delete().eq('id', trackingId).select('id')
+    if (error) {
+      setMessage(error.message)
+      return
+    }
+    if (!data || data.length === 0) {
+      setMessage("That waybill didn't actually delete — refresh and try again.")
+      return
+    }
     setTracking((rows) => rows.filter((r) => r.id !== trackingId))
   }
 
@@ -207,7 +228,15 @@ export default function AdminBatchDetail() {
   }
 
   async function handleRemoveItem(itemId) {
-    await supabase.from('packing_list_items').delete().eq('id', itemId)
+    const { data, error } = await supabase.from('packing_list_items').delete().eq('id', itemId).select('id')
+    if (error) {
+      setMessage(error.message)
+      return
+    }
+    if (!data || data.length === 0) {
+      setMessage("That line item didn't actually delete — refresh and try again.")
+      return
+    }
     setItems((rows) => rows.filter((r) => r.id !== itemId))
   }
 

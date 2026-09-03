@@ -79,7 +79,10 @@ worth doing if the client wants a shareable, no-login tracking link.
    you already had this project running before some of this was
    added, run whichever files under `supabase/migrations/` you're
    missing instead — each one is safe to run even if parts of it
-   already exist.)
+   already exist. If you're not sure what's already been run,
+   `supabase/migrations/013_reconcile_all_policies.sql` re-asserts
+   every permission rule in the app in one go and is always safe to
+   run — see the comment at the top of that file for why it exists.)
 3. In Project Settings → API Keys, copy your Project URL (Settings →
    General) and your Publishable key.
 4. In Authentication → Settings, turn OFF "Confirm email" — sign-ups

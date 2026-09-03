@@ -20,7 +20,7 @@ export default function AdminOverview() {
         supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'customer'),
         supabase
           .from('batches')
-          .select('*, profiles!batches_customer_id_fkey(full_name)')
+          .select('*, profiles!batches_customer_id_fkey(full_name), tracking_numbers(count)')
           .order('created_at', { ascending: false })
           .limit(8),
       ])
@@ -124,6 +124,9 @@ export default function AdminOverview() {
                 <div className="text-xs text-steel mt-0.5">
                   {b.service_type && <span>{formatServiceType(b.service_type)}</span>}
                   {b.route && <span> · {formatRoute(b.route)}</span>}
+                </div>
+                <div className="text-xs text-steel mt-0.5">
+                  {b.tracking_numbers?.[0]?.count ?? 0} tracking number(s)
                 </div>
               </div>
               <StatusStamp status={b.status} />

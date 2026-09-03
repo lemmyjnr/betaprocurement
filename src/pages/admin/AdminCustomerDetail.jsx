@@ -124,7 +124,7 @@ export default function AdminCustomerDetail() {
     async function load() {
       const [{ data: c }, { data: b }] = await Promise.all([
         supabase.from('profiles').select('*').eq('id', id).single(),
-        supabase.from('batches').select('*').eq('customer_id', id).order('created_at', { ascending: false }),
+        supabase.from('batches').select('*, tracking_numbers(count)').eq('customer_id', id).order('created_at', { ascending: false }),
       ])
       setCustomer(c)
       setBatches(b || [])
@@ -211,6 +211,9 @@ export default function AdminCustomerDetail() {
                 <span className="text-xs text-steel">
                   {b.service_type && formatServiceType(b.service_type)}
                   {b.route && ` · ${formatRoute(b.route)}`}
+                </span>
+                <span className="text-xs text-steel">
+                  {b.tracking_numbers?.[0]?.count ?? 0} tracking number(s)
                 </span>
                 <StatusStamp status={b.status} />
               </div>
