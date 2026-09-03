@@ -31,11 +31,14 @@ export default function Login() {
       // straight back to the customer dashboard — see ProtectedRoute.jsx.
       navigate(adminHost ? '/admin' : '/')
     } catch (err) {
-      if (err.message === 'NO_ACCOUNT') {
-        setError('We couldn\u2019t find an account with that phone number or email.')
-      } else {
-        setError('That password doesn\u2019t match our records.')
-      }
+      // Deliberately the same message whether the identifier doesn't
+      // exist at all or the password was just wrong — showing a
+      // different message for each ("no account found" vs "wrong
+      // password") lets someone enumerate which phone numbers/emails
+      // are registered simply by trying them at the login form and
+      // watching which error comes back. One generic message closes
+      // that off without changing the actual login logic.
+      setError('That phone number/email or password doesn\u2019t match our records.')
     } finally {
       setLoading(false)
     }

@@ -151,6 +151,38 @@ create policy "user updates own profile or admin updates any"
   on profiles for update
   using (id = auth.uid() or is_admin());
 
+-- The policy above only restricts WHICH row someone can update (their
+-- own, or any row if admin) — it has no "with check", so on its own
+-- it does nothing to stop someone from setting role/is_owner/suspended
+-- on their own row to whatever they want. This trigger is the actual
+-- backstop: it blocks changes to those three fields unless the caller
+-- is already the owner, regardless of which policy let the UPDATE
+-- through. See supabase/migrations/014_lock_privileged_profile_fields.sql
+-- for the full explanation of the gap this closes.
+create or replace function protect_privileged_profile_fields()
+returns trigger as $$
+begin
+  if new.role is distinct from old.role or new.is_owner is distinct from old.is_owner then
+    if not is_owner() then
+      raise exception 'Only the owner can change role or ownership, and only through the Staff page.';
+    end if;
+  end if;
+
+  if new.suspended is distinct from old.suspended then
+    if not is_owner() then
+      raise exception 'Only the owner can change suspension status, and only through the Staff page.';
+    end if;
+  end if;
+
+  return new;
+end;
+$$ language plpgsql security definer set search_path = public;
+
+drop trigger if exists protect_privileged_profile_fields_trigger on profiles;
+create trigger protect_privileged_profile_fields_trigger
+  before update on profiles
+  for each row execute function protect_privileged_profile_fields();
+
 -- Admin can delete a customer account, but not another admin's — an
 -- admin trying to remove another admin needs the owner-only Staff
 -- page flow (remove_admin(), further down). Deleting a profile here

@@ -87,7 +87,7 @@ export default function SignUp() {
         <FormField label="Password">
           <PasswordInput
             required
-            minLength={6}
+            minLength={8}
             value={form.password}
             onChange={update('password')}
             placeholder="At least 6 characters"

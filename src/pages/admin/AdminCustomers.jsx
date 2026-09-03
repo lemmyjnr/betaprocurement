@@ -76,7 +76,7 @@ export default function AdminCustomers() {
             <TextInput type="email" value={form.email} onChange={update('email')} />
           </FormField>
           <FormField label="Temporary password">
-            <TextInput required type="text" minLength={6} value={form.password} onChange={update('password')} />
+            <TextInput required type="text" minLength={8} value={form.password} onChange={update('password')} />
           </FormField>
           {error && <p className="text-sm text-alert mb-4">{error}</p>}
           <PrimaryButton type="submit" loading={creating}>

@@ -78,7 +78,7 @@ export default function StaffInvite() {
           <TextInput type="email" value={form.email} onChange={update('email')} />
         </FormField>
         <FormField label="Password">
-          <PasswordInput required minLength={6} value={form.password} onChange={update('password')} />
+          <PasswordInput required minLength={8} value={form.password} onChange={update('password')} />
         </FormField>
         {error && <p className="text-sm text-alert mb-4">{error}</p>}
         <PrimaryButton type="submit" loading={submitting}>

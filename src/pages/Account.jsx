@@ -69,8 +69,8 @@ function PasswordSection() {
   async function handleSubmit(e) {
     e.preventDefault()
     setStatus('')
-    if (password.length < 6) {
-      setStatus('error:Password must be at least 6 characters.')
+    if (password.length < 8) {
+      setStatus('error:Password must be at least 8 characters.')
       return
     }
     if (password !== confirm) {
@@ -93,7 +93,7 @@ function PasswordSection() {
       <FormField label="New password">
         <PasswordInput
           required
-          minLength={6}
+          minLength={8}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
         />
@@ -101,7 +101,7 @@ function PasswordSection() {
       <FormField label="Confirm new password">
         <PasswordInput
           required
-          minLength={6}
+          minLength={8}
           value={confirm}
           onChange={(e) => setConfirm(e.target.value)}
         />

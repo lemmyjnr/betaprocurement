@@ -50,7 +50,7 @@ function PasswordReset({ customerId }) {
     <form onSubmit={handleReset} className="flex items-center gap-2 mt-2">
       <input
         required
-        minLength={6}
+        minLength={8}
         type="text"
         value={newPassword}
         onChange={(e) => setNewPassword(e.target.value)}
