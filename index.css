@@ -1,0 +1,102 @@
+@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+@theme {
+  /* Ink & paper — navy and red pulled directly from the Beta Logistics logo */
+  --color-ink: #191152;
+  --color-ink-soft: #322a6e;
+  --color-paper: #f4f3ef;
+  --color-paper-dim: #eae8e1;
+
+  /* Signal colors, pulled from real waybill/status conventions */
+  --color-amber: #d4212a;
+  --color-amber-dim: #f9dcd9;
+  --color-cargo: #1f7a5c;
+  --color-cargo-dim: #d9ece3;
+  --color-alert: #b23a3a;
+  --color-alert-dim: #f3dede;
+  --color-steel: #5b6472;
+  --color-steel-line: #d8d6cd;
+
+  /* One distinct color per stage of the shipping pipeline, so a
+     status is recognizable by color alone at a glance. */
+  --color-info: #2f6fb0;
+  --color-transit: #c9820a;
+  --color-port: #0f8a8a;
+  --color-clearing: #7c5cbf;
+
+  --font-display: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+}
+
+html {
+  font-family: var(--font-sans);
+}
+
+body {
+  background-color: var(--color-paper);
+  color: var(--color-ink);
+}
+
+/* Manifest-tag signature element: a batch card with a perforated top edge */
+.manifest-card {
+  position: relative;
+  background: #fff;
+  border: 1px solid var(--color-steel-line);
+  border-radius: 6px;
+  box-shadow: 0 1px 2px rgba(25, 17, 82, 0.04);
+  transition: box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.manifest-card:hover {
+  box-shadow: 0 4px 12px rgba(25, 17, 82, 0.08);
+  border-color: #c7c4b8;
+}
+
+.manifest-card::before {
+  content: "";
+  position: absolute;
+  top: -1px;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background-image: radial-gradient(circle, var(--color-paper) 1.5px, transparent 1.6px);
+  background-size: 10px 3px;
+  background-repeat: repeat-x;
+}
+
+.stamp {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 0.2rem 0.55rem;
+  border: 1.5px solid currentColor;
+  border-radius: 3px;
+  transform: rotate(-1deg);
+}
+
+::selection {
+  background: var(--color-amber-dim);
+  color: var(--color-ink);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-amber);
+  outline-offset: 2px;
+}
+
+/* iOS Safari auto-zooms the whole page when a focused input's font is
+   under 16px — that's the "budging" on focus. Forcing 16px on mobile
+   only stops the zoom without changing how anything looks on desktop. */
+@media (max-width: 767px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}

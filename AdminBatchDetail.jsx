@@ -268,7 +268,6 @@ export default function AdminBatchDetail() {
           <div className="text-sm text-steel mt-1 flex gap-2">
             {batch.service_type && <span>{formatServiceType(batch.service_type)}</span>}
             {batch.route && <span>· {formatRoute(batch.route)}</span>}
-            <span>· {tracking.length} tracking number{tracking.length === 1 ? '' : 's'}</span>
           </div>
         </div>
         <div className="flex flex-col items-end gap-2">
@@ -293,9 +292,7 @@ export default function AdminBatchDetail() {
         </div>
       </div>
 
-      <h2 className="font-display text-lg font-semibold text-ink mt-8 mb-3">
-        Tracking numbers <span className="text-steel font-normal">({tracking.length})</span>
-      </h2>
+      <h2 className="font-display text-lg font-semibold text-ink mt-8 mb-3">Tracking numbers</h2>
       <div className="space-y-2 mb-4">
         {tracking.map((t) => (
           <div key={t.id} className="manifest-card p-4">
