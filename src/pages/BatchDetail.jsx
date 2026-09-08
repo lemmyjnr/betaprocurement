@@ -35,6 +35,28 @@ export default function BatchDetail() {
   const [addError, setAddError] = useState('')
   const [adding, setAdding] = useState(false)
 
+  const draftKey = `addWaybillDraft:${id}`
+
+  // Same reason as the New Batch form — restore anything she'd
+  // already typed if the tab got reloaded in the background.
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(draftKey)
+      if (saved) setNewWaybill(saved)
+    } catch {
+      // Corrupted or unreadable draft — just start blank.
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draftKey])
+
+  useEffect(() => {
+    if (newWaybill) {
+      localStorage.setItem(draftKey, newWaybill)
+    } else {
+      localStorage.removeItem(draftKey)
+    }
+  }, [draftKey, newWaybill])
+
   async function load() {
     const [{ data: b }, { data: t }, { data: pl }] = await Promise.all([
       supabase.from('batches').select('*').eq('id', id).single(),
@@ -103,6 +125,7 @@ export default function BatchDetail() {
       return
     }
     setNewWaybill('')
+    localStorage.removeItem(draftKey)
     setAddingNew(false)
     await load()
   }

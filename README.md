@@ -136,7 +136,9 @@ up — no app code involved, it's a Postgres trigger.
 4. Run `supabase/migrations/006_email_notifications.sql`, then
    `supabase/migrations/015_status_email_templates.sql`, then
    `supabase/migrations/016_add_picked_up_status.sql`, then
-   `supabase/migrations/017_email_branding_and_personalization.sql`
+   `supabase/migrations/017_email_branding_and_personalization.sql`,
+   then `supabase/migrations/018_admin_notifications.sql`, then
+   `supabase/migrations/019_verified_sender_address.sql`
    (all are already included in `schema.sql` for brand-new projects).
 5. Test it: as admin, change any batch's status to `received`,
    `in_transit`, `arrived_port`, or `delivered`. If the customer on
@@ -151,16 +153,21 @@ up — no app code involved, it's a Postgres trigger.
 - **Arrived at port** — arrived in Nigeria, customs clearance in progress.
 - **Delivered** — out of customs, customer picks pick-up/delivery/waybill.
 
-**Important limitation until you verify your own domain:** the
-sender address is `onboarding@resend.dev`, Resend's shared testing
-domain. Emails from it only actually arrive at the email address on
-your own Resend account — sending to a real customer will silently
-fail. To send to real customers:
-1. In Resend → **Domains** → add your domain (e.g. a subdomain of
-   `betalogistics.ng`) → add the DNS records Resend gives you.
-2. Once it shows **Verified**, update the `from` line in the
-   database (`notify_batch_status_change()` function) to use an
-   address on your verified domain.
+**Admin notifications** (`notify_admins_new_customer()` and
+`notify_admins_new_tracking()`, migration 018) send to every admin
+with an email on file (and not suspended) whenever:
+- a new customer signs up, or
+- a customer adds tracking number(s) to a batch — either when first
+  creating it or adding more later. One email per upload, even if
+  several tracking numbers are added at once. Admin-side additions
+  through the admin panel don't trigger this — only customer-initiated ones.
+
+**Sender address:** `procurement.beta-eshopping.com` is verified in
+Resend, and all emails (customer status updates and admin
+notifications) send from `info@procurement.beta-eshopping.com`
+(migration 019). If you ever need to change it, update the `from`
+line in all three functions — `notify_batch_status_change()`,
+`notify_admins_new_customer()`, and `notify_admins_new_tracking()`.
 
 Free-tier Resend allows up to 100 emails/day and 3,000/month.
 
