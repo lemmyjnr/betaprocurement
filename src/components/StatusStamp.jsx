@@ -6,6 +6,7 @@ const STYLES = {
   shipped: 'text-transit',
   arrived_port: 'text-port',
   clearing: 'text-clearing',
+  picked_up: 'text-pickup',
   delivered: 'text-cargo',
 }
 
@@ -17,6 +18,7 @@ const LABELS = {
   shipped: 'Shipped',
   arrived_port: 'Arrived at port',
   clearing: 'Clearing',
+  picked_up: 'Picked up',
   delivered: 'Delivered',
 }
 

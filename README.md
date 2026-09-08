@@ -133,10 +133,23 @@ up — no app code involved, it's a Postgres trigger.
    ```sql
    select vault.create_secret('YOUR_RESEND_API_KEY_HERE', 'resend_api_key');
    ```
-4. Run `supabase/migrations/006_email_notifications.sql` (already
-   included in `schema.sql` for brand-new projects).
-5. Test it: as admin, change any batch's status. If the customer on
-   that batch has an email on file, they should get one.
+4. Run `supabase/migrations/006_email_notifications.sql`, then
+   `supabase/migrations/015_status_email_templates.sql`, then
+   `supabase/migrations/016_add_picked_up_status.sql`, then
+   `supabase/migrations/017_email_branding_and_personalization.sql`
+   (all are already included in `schema.sql` for brand-new projects).
+5. Test it: as admin, change any batch's status to `received`,
+   `in_transit`, `arrived_port`, or `delivered`. If the customer on
+   that batch has an email on file, they should get one of the four
+   branded templates below. `submitted` and `clearing` don't send an
+   email — there's no client-approved template for those yet.
+
+**The four templates currently in use** (edit them directly in the
+`notify_batch_status_change()` function if wording needs to change):
+- **Received** — goods received at the warehouse, being processed.
+- **In transit** — batch is on its way.
+- **Arrived at port** — arrived in Nigeria, customs clearance in progress.
+- **Delivered** — out of customs, customer picks pick-up/delivery/waybill.
 
 **Important limitation until you verify your own domain:** the
 sender address is `onboarding@resend.dev`, Resend's shared testing

@@ -11,6 +11,7 @@ const BATCH_LABELS = {
   in_transit: 'In transit',
   arrived_port: 'Arrived at port',
   clearing: 'Clearing',
+  picked_up: 'Picked up',
   delivered: 'Delivered',
 }
 

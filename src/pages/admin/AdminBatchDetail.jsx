@@ -6,13 +6,14 @@ import { supabase } from '../../lib/supabaseClient'
 import { useAuth } from '../../context/AuthContext'
 import { formatServiceType, formatRoute } from '../../lib/labels'
 
-const BATCH_STATUSES = ['submitted', 'received', 'in_transit', 'arrived_port', 'clearing', 'delivered']
+const BATCH_STATUSES = ['submitted', 'received', 'in_transit', 'arrived_port', 'clearing', 'picked_up', 'delivered']
 const BATCH_STATUS_LABELS = {
   submitted: 'Submitted',
   received: 'Received',
   in_transit: 'In transit',
   arrived_port: 'Arrived at port',
   clearing: 'Clearing',
+  picked_up: 'Picked up',
   delivered: 'Delivered',
 }
 
