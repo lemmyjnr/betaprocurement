@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import AppShell from '../components/AppShell'
 import { supabase } from '../lib/supabaseClient'
@@ -31,6 +31,33 @@ export default function NewBatch() {
   // back to the session so a fast click right after page load never
   // crashes on a still-loading profile.
   const customerId = profile?.id || session?.user?.id
+  const draftKey = customerId ? `newBatchDraft:${customerId}` : null
+
+  // If the browser reloaded this tab in the background (common on
+  // mobile when a call comes in or the person switches apps for a
+  // bit), restore whatever she'd already typed instead of making
+  // her start the form over from scratch.
+  useEffect(() => {
+    if (!draftKey) return
+    try {
+      const raw = localStorage.getItem(draftKey)
+      if (!raw) return
+      const draft = JSON.parse(raw)
+      if (draft.serviceType) setServiceType(draft.serviceType)
+      if (draft.route) setRoute(draft.route)
+      if (Array.isArray(draft.waybills) && draft.waybills.length) setWaybills(draft.waybills)
+    } catch {
+      // Corrupted or unreadable draft — just start with a blank form.
+    }
+    // Only run once we actually know who the draft belongs to.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draftKey])
+
+  // Keep the draft up to date as she fills in the form.
+  useEffect(() => {
+    if (!draftKey) return
+    localStorage.setItem(draftKey, JSON.stringify({ serviceType, route, waybills }))
+  }, [draftKey, serviceType, route, waybills])
 
   function updateWaybill(index, field, value) {
     setWaybills((rows) => rows.map((r, i) => (i === index ? { ...r, [field]: value } : r)))
@@ -99,6 +126,7 @@ export default function NewBatch() {
       const { error: trackingError } = await supabase.from('tracking_numbers').insert(rows)
       if (trackingError) throw trackingError
 
+      if (draftKey) localStorage.removeItem(draftKey)
       navigate(`/batches/${batch.id}`)
     } catch (err) {
       setError(err.message || 'Could not submit this order. Try again.')

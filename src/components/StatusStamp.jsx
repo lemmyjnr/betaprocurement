@@ -18,7 +18,7 @@ const LABELS = {
   shipped: 'Shipped',
   arrived_port: 'Arrived at port',
   clearing: 'Clearing',
-  picked_up: 'Picked up',
+  picked_up: 'Pick up',
   delivered: 'Delivered',
 }
 
