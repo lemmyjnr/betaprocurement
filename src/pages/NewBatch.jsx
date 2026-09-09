@@ -8,9 +8,8 @@ import { SERVICE_TYPES, SERVICE_TYPE_LABELS, ROUTES, ROUTE_LABELS } from '../lib
 const emptyWaybill = () => ({ waybill_number: '' })
 
 function generateBatchCode() {
-  const year = new Date().getFullYear()
-  const rand = Math.floor(1000 + Math.random() * 9000)
-  return `BCH-${year}-${rand}`
+  const rand = Math.floor(1000000 + Math.random() * 9000000)
+  return `BCH-${rand}`
 }
 
 export default function NewBatch() {

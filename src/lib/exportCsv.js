@@ -1,6 +1,8 @@
+import { formatLoadingDate } from './labels'
+
 export function downloadPackingListCsv(batchCode, items) {
   const header = ['Quantity', 'Weight (kg)', 'CBM', 'Price per CBM', 'Amount ($)', 'Loading date']
-  const rows = items.map((i) => [i.quantity, i.weight ?? '', i.cbm ?? '', i.price_per_cbm ?? '', i.amount ?? '', i.notes ?? ''])
+  const rows = items.map((i) => [i.quantity, i.weight ?? '', i.cbm ?? '', i.price_per_cbm ?? '', i.amount ?? '', formatLoadingDate(i.notes) ?? ''])
 
   const csv = [header, ...rows]
     .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(','))

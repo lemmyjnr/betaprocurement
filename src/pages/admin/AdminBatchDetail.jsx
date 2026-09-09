@@ -4,7 +4,7 @@ import AppShell from '../../components/AppShell'
 import StatusStamp from '../../components/StatusStamp'
 import { supabase } from '../../lib/supabaseClient'
 import { useAuth } from '../../context/AuthContext'
-import { formatServiceType, formatRoute } from '../../lib/labels'
+import { formatServiceType, formatRoute, formatLoadingDate } from '../../lib/labels'
 
 const BATCH_STATUSES = ['submitted', 'received', 'in_transit', 'arrived_port', 'clearing', 'picked_up', 'delivered']
 const BATCH_STATUS_LABELS = {
@@ -396,7 +396,7 @@ export default function AdminBatchDetail() {
                   <td className="px-4 py-3 text-ink">{item.cbm ?? '—'}</td>
                   <td className="px-4 py-3 text-ink">{item.price_per_cbm ?? '—'}</td>
                   <td className="px-4 py-3 text-ink">{item.amount ?? '—'}</td>
-                  <td className="px-4 py-3 text-steel">{item.notes || '—'}</td>
+                  <td className="px-4 py-3 text-steel">{formatLoadingDate(item.notes) || '—'}</td>
                   <td className="px-4 py-3 text-right">
                     <button
                       onClick={() => handleRemoveItem(item.id)}
@@ -520,10 +520,10 @@ export default function AdminBatchDetail() {
           <label className="flex-1 min-w-[160px]">
             <span className="block text-xs font-medium text-ink mb-1">Loading date</span>
             <input
+              type="date"
               value={newItem.notes}
               onChange={(e) => updateNewItemField('notes', e.target.value)}
               className="w-full rounded-md border border-steel-line bg-white px-3 py-2 text-sm"
-              placeholder="Optional"
             />
           </label>
           <button

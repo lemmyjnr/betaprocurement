@@ -20,3 +20,13 @@ export function formatServiceType(value) {
 export function formatRoute(value) {
   return ROUTE_LABELS[value] || value
 }
+
+export function formatLoadingDate(value) {
+  if (!value) return null
+  // Only reformat clean YYYY-MM-DD values (from the date picker) —
+  // leave any older free-text notes exactly as they were typed.
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return value
+  const [year, month, day] = value.split('-').map(Number)
+  const date = new Date(year, month - 1, day)
+  return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+}

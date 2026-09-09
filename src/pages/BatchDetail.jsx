@@ -4,7 +4,7 @@ import AppShell from '../components/AppShell'
 import StatusStamp from '../components/StatusStamp'
 import { supabase } from '../lib/supabaseClient'
 import { downloadPackingListCsv } from '../lib/exportCsv'
-import { formatServiceType, formatRoute } from '../lib/labels'
+import { formatServiceType, formatRoute, formatLoadingDate } from '../lib/labels'
 
 // An order stays editable by the customer up through "received" —
 // once it's in_transit (shipped) or further along, only admin can
@@ -314,7 +314,7 @@ export default function BatchDetail() {
                       <td className="px-4 py-3 text-ink">{item.cbm ?? '—'}</td>
                       <td className="px-4 py-3 text-ink">{item.price_per_cbm ?? '—'}</td>
                       <td className="px-4 py-3 text-ink">{item.amount ?? '—'}</td>
-                      <td className="px-4 py-3 text-steel">{item.notes || '—'}</td>
+                      <td className="px-4 py-3 text-steel">{formatLoadingDate(item.notes) || '—'}</td>
                     </tr>
                   ))}
                 </tbody>
