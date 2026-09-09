@@ -483,8 +483,9 @@ begin
       email_body :=
         '<p>Dear ' || greeting_name || ',</p>' ||
         '<p>We are pleased to inform you that Item Batch <strong>' || new.batch_code || '</strong> is currently in transit and on its way to its destination.</p>' ||
-        '<p>We will keep you updated on the progress of the shipment.</p>' ||
-        '<p>Thank you for choosing Beta Courier &amp; Logistics. We appreciate your continued patronage. ❤️</p>';
+        '<p>You can log into your <a href="https://procurement.beta-eshopping.com/login">customer portal</a> to view the total CBM of your goods and other shipment details.</p>' ||
+        '<p>We will continue to keep you updated on the progress of your shipment.</p>' ||
+        '<p>Thank you for choosing Beta Courier &amp; Logistics. We appreciate your continued patronage.</p>';
 
     when 'arrived_port' then
       email_subject := '🇳🇬 Shipping update';
@@ -695,3 +696,24 @@ returns table (
 $$ language sql security definer set search_path = public;
 
 grant execute on function public_track_waybill(text) to anon, authenticated;
+
+-- Superseded public_track_waybill() above: the app now tracks by
+-- Batch number instead of individual waybill number. Old function
+-- left in place, just unused by the app now.
+create or replace function public_track_batch(lookup text)
+returns table (
+  batch_code text,
+  batch_status text,
+  service_type text,
+  route text,
+  tracking_count int
+) as $$
+  select b.batch_code, b.status, b.service_type, b.route, count(t.id)::int
+  from batches b
+  left join tracking_numbers t on t.batch_id = b.id
+  where b.batch_code = trim(lookup)
+  group by b.id
+  limit 1
+$$ language sql security definer set search_path = public;
+
+grant execute on function public_track_batch(text) to anon, authenticated;

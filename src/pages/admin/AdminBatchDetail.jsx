@@ -384,7 +384,7 @@ export default function AdminBatchDetail() {
                 <th className="px-4 py-3 font-medium">CBM</th>
                 <th className="px-4 py-3 font-medium">Price per CBM</th>
                 <th className="px-4 py-3 font-medium">Amount ($)</th>
-                <th className="px-4 py-3 font-medium">Notes</th>
+                <th className="px-4 py-3 font-medium">Loading date</th>
                 <th className="px-4 py-3"></th>
               </tr>
             </thead>
@@ -518,7 +518,7 @@ export default function AdminBatchDetail() {
             />
           </label>
           <label className="flex-1 min-w-[160px]">
-            <span className="block text-xs font-medium text-ink mb-1">Notes</span>
+            <span className="block text-xs font-medium text-ink mb-1">Loading date</span>
             <input
               value={newItem.notes}
               onChange={(e) => updateNewItemField('notes', e.target.value)}

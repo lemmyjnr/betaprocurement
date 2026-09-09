@@ -4,7 +4,6 @@ import BrandMark from '../components/BrandMark'
 import { supabase } from '../lib/supabaseClient'
 import { formatServiceType, formatRoute } from '../lib/labels'
 
-const TRACKING_LABELS = { pending: 'Pending', received: 'Received' }
 const BATCH_LABELS = {
   submitted: 'Submitted',
   received: 'Received',
@@ -16,17 +15,17 @@ const BATCH_LABELS = {
 }
 
 export default function PublicTrack() {
-  const [waybill, setWaybill] = useState('')
+  const [batchCode, setBatchCode] = useState('')
   const [result, setResult] = useState(null)
   const [searched, setSearched] = useState(false)
   const [loading, setLoading] = useState(false)
 
   async function handleSearch(e) {
     e.preventDefault()
-    if (!waybill.trim()) return
+    if (!batchCode.trim()) return
     setLoading(true)
     setSearched(true)
-    const { data } = await supabase.rpc('public_track_waybill', { lookup: waybill.trim() })
+    const { data } = await supabase.rpc('public_track_batch', { lookup: batchCode.trim() })
     setResult(data?.[0] || null)
     setLoading(false)
   }
@@ -43,13 +42,13 @@ export default function PublicTrack() {
 
       <div className="w-full max-w-md">
         <h1 className="font-display text-2xl font-semibold text-ink mb-1">Track a shipment</h1>
-        <p className="text-sm text-steel mb-8">Enter a waybill number — no account needed.</p>
+        <p className="text-sm text-steel mb-8">Enter a batch number — no account needed.</p>
 
         <form onSubmit={handleSearch} className="flex gap-2 mb-8">
           <input
-            value={waybill}
-            onChange={(e) => setWaybill(e.target.value)}
-            placeholder="e.g. 71009618"
+            value={batchCode}
+            onChange={(e) => setBatchCode(e.target.value)}
+            placeholder="e.g. BCH-2026-3411"
             className="flex-1 rounded-md border border-steel-line bg-white px-3.5 py-2.5 text-sm font-mono text-ink focus:border-amber outline-none"
           />
           <button
@@ -64,14 +63,14 @@ export default function PublicTrack() {
         {searched && !loading && (
           result ? (
             <div className="manifest-card p-5">
-              <div className="font-mono text-sm text-ink mb-3">{result.waybill_number}</div>
-              <div className="flex items-center justify-between py-2 border-t border-steel-line">
-                <span className="text-sm text-steel">Waybill status</span>
-                <span className="stamp text-amber">{TRACKING_LABELS[result.tracking_status] || result.tracking_status}</span>
-              </div>
+              <div className="font-mono text-sm text-ink mb-3">{result.batch_code}</div>
               <div className="flex items-center justify-between py-2 border-t border-steel-line">
                 <span className="text-sm text-steel">Shipment status</span>
                 <span className="stamp text-cargo">{BATCH_LABELS[result.batch_status] || result.batch_status}</span>
+              </div>
+              <div className="flex items-center justify-between py-2 border-t border-steel-line">
+                <span className="text-sm text-steel">Tracking numbers</span>
+                <span className="text-sm text-ink">{result.tracking_count}</span>
               </div>
               {result.service_type && (
                 <div className="flex items-center justify-between py-2 border-t border-steel-line">
@@ -87,7 +86,7 @@ export default function PublicTrack() {
               )}
             </div>
           ) : (
-            <p className="text-sm text-steel">No shipment found with that waybill number.</p>
+            <p className="text-sm text-steel">No shipment found with that batch number.</p>
           )
         )}
       </div>

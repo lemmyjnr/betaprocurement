@@ -138,7 +138,9 @@ up — no app code involved, it's a Postgres trigger.
    `supabase/migrations/016_add_picked_up_status.sql`, then
    `supabase/migrations/017_email_branding_and_personalization.sql`,
    then `supabase/migrations/018_admin_notifications.sql`, then
-   `supabase/migrations/019_verified_sender_address.sql`
+   `supabase/migrations/019_verified_sender_address.sql`, then
+   `supabase/migrations/020_track_by_batch_number.sql`, then
+   `supabase/migrations/021_update_in_transit_email.sql`
    (all are already included in `schema.sql` for brand-new projects).
 5. Test it: as admin, change any batch's status to `received`,
    `in_transit`, `arrived_port`, or `delivered`. If the customer on

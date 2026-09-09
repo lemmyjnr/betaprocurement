@@ -303,7 +303,7 @@ export default function BatchDetail() {
                     <th className="px-4 py-3 font-medium">CBM</th>
                     <th className="px-4 py-3 font-medium">Price per CBM</th>
                     <th className="px-4 py-3 font-medium">Amount ($)</th>
-                    <th className="px-4 py-3 font-medium">Notes</th>
+                    <th className="px-4 py-3 font-medium">Loading date</th>
                   </tr>
                 </thead>
                 <tbody>
