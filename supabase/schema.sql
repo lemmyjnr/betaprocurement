@@ -129,7 +129,7 @@ create or replace function auth_email_for_identifier(lookup text)
 returns text as $$
   select auth_email from profiles
   where email = lower(trim(lookup))
-     or phone = regexp_replace(lookup, '\D', '', 'g')
+     or regexp_replace(phone, '\D', '', 'g') = regexp_replace(lookup, '\D', '', 'g')
   limit 1
 $$ language sql security definer set search_path = public;
 
